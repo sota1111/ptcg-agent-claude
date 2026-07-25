@@ -132,6 +132,14 @@ class PlannerConfig:
     # champion behaviour byte-identical. In-tree node priors are unchanged
     # (they use the type-tier heuristic, not the prior agent).
     learned_prior_path: str | None = None
+    # Early-bench development boost (SOT-1941, opt-in — both 0 => champion
+    # byte-identical). Raises the greedy prior/rollout priority of playing a
+    # basic Pokémon to the bench while the bench sits below `early_bench_floor`
+    # slots (board-wipe insurance at the action-order layer, distinct from the
+    # SOT-1863 leaf-eval bench_dev term). Fed into the shared GreedyAgent that
+    # serves the root prior and the rollout policy.
+    early_bench: float = 0.0
+    early_bench_floor: int = 0
     # Self-play recording hook (train/gen_policy.py). When True the planner
     # stores the root's per-option aggregate visit counts in `last_root` after
     # each single-select decision, so the recorder can label states with the
@@ -374,7 +382,9 @@ class MctsPlanner:
         self._backend = backend
         self._card_index = card_index
         self._clock = clock
-        self._greedy = GreedyAgent(seed=0, card_index=card_index)
+        self._greedy = GreedyAgent(seed=0, card_index=card_index,
+                                   bench_boost=self.config.early_bench,
+                                   bench_floor=self.config.early_bench_floor)
         # take-tactics injection points (SOT-1892): one shared tactical
         # scorer serves whichever of prior/rollout is switched on; with both
         # OFF (champion default) these are aliases of the plain greedy.
