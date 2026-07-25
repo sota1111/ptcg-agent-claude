@@ -116,9 +116,20 @@ _SPECIAL_CONDITION_SEVERITY = {
 class GreedyAgent(BaseAgent):
     """One-ply greedy agent over the engine's legal options."""
 
-    def __init__(self, seed: int, deck=None, card_index=None):
+    def __init__(self, seed: int, deck=None, card_index=None,
+                 bench_boost: float = 0.0, bench_floor: int = 0):
         super().__init__(seed, deck)
         self._card_index = card_index
+        # Early-bench development boost (SOT-1941, opt-in — both 0 => champion
+        # behaviour unchanged). Board wipe (盤面全滅) is fable's biggest local
+        # loss cluster; SOT-1863 showed a LEAF-eval bench bonus does not move
+        # it. This is a different lever: it raises the ACTION PRIOR of playing
+        # a basic Pokémon to the bench while the bench sits below `bench_floor`
+        # slots, so the search/greedy sequence lays down insurance basics
+        # (front-loaded, saturating at the floor) BEFORE spending the turn on
+        # items/supporters/attacks. Steers play ORDER, not leaf value.
+        self._bench_boost = float(bench_boost)
+        self._bench_floor = int(bench_floor)
 
     @property
     def cards(self):
@@ -212,7 +223,21 @@ class GreedyAgent(BaseAgent):
             base += 10.0
         elif card.card_type == _CT_POKEMON and card.basic:
             base += 15.0
+            base += self._early_bench_boost(view)
         return base + 0.05 * self._features_value(card)
+
+    def _early_bench_boost(self, view: View) -> float:
+        """SOT-1941 opt-in: extra play-priority for a basic Pokémon while the
+        bench is below `bench_floor` (0 => disabled). Saturating — the deficit
+        is capped at the floor, front-loading value on the first insurance
+        Pokémon (0->1 bench prevents a wipe; a full bench earns nothing)."""
+        if self._bench_floor <= 0 or self._bench_boost == 0.0:
+            return 0.0
+        bench_count = len(view.me.bench or ())
+        deficit = self._bench_floor - bench_count
+        if deficit <= 0:
+            return 0.0
+        return self._bench_boost * deficit
 
     def _card_target_score(self, view: View, raw: dict) -> float:
         context = view.select.context

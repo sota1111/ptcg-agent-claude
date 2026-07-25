@@ -103,6 +103,17 @@ def run(n: int, mirror: bool, budget_s: float, seed: int,
         M.FABLE_CONFIG = {**M.FABLE_CONFIG, "eval_weights": merged}
         print(f"  eval_weights override -> {merged}", flush=True)
 
+    # SOT-1941: FABLE_TAG_CONFIG is a JSON delta merged onto the TOP-LEVEL
+    # champion config (not eval_weights), so a candidate that lives in a
+    # PlannerConfig knob — e.g. the early-bench action-prior boost
+    # {"early_bench":..,"early_bench_floor":..} — can be re-tagged and its
+    # board_wipe share compared to the champion's the same way.
+    config_override = os.environ.get("FABLE_TAG_CONFIG", "").strip()
+    if config_override:
+        cdelta = json.loads(config_override)
+        M.FABLE_CONFIG = {**M.FABLE_CONFIG, **cdelta}
+        print(f"  config override -> {cdelta}", flush=True)
+
     deck = M.read_deck_csv()
     play_match.decks = (deck, deck)
     opp_label = "fable" if mirror else "greedy"
