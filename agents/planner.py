@@ -125,6 +125,18 @@ class PlannerConfig:
     # root action prior / the rollout policy respectively.
     tactics_prior: bool = False
     tactics_rollout: bool = False
+    # Learned action prior (SOT-1916 expert iteration). Opt-in path to a
+    # policy-net JSON (agents/policy_net.py); when set, the ROOT prior scores
+    # come from the learned per-option scorer (agents/learned_prior.py) instead
+    # of GreedyAgent, feeding the same PUCT ranking/softmax. Default None =>
+    # champion behaviour byte-identical. In-tree node priors are unchanged
+    # (they use the type-tier heuristic, not the prior agent).
+    learned_prior_path: str | None = None
+    # Self-play recording hook (train/gen_policy.py). When True the planner
+    # stores the root's per-option aggregate visit counts in `last_root` after
+    # each single-select decision, so the recorder can label states with the
+    # MCTS visit distribution π. No effect on the returned action.
+    record_root: bool = False
 
 
 @dataclass
@@ -374,8 +386,17 @@ class MctsPlanner:
                 self._prior_agent = tactical
             if self.config.tactics_rollout:
                 self._rollout_agent = tactical
+        # Learned action prior (SOT-1916): opt-in, replaces the root prior
+        # scores only. Loaded once here so the JSON read never lands inside a
+        # timed decision (budget criterion), mirroring the value-net eager load.
+        self._learned_prior = None
+        if self.config.learned_prior_path:
+            from .learned_prior import LearnedPrior
+            self._learned_prior = LearnedPrior.from_path(
+                self.config.learned_prior_path, card_index=self.cards)
         self.degraded_count = 0   # decisions answered by the greedy prior
         self.last_stats = {}
+        self.last_root = None     # per-option visit record (record_root)
 
     @property
     def backend(self):
@@ -396,6 +417,8 @@ class MctsPlanner:
         budget = cfg.time_budget_s if budget_s is None else budget_s
         t0 = self._clock()
         deadline = t0 + budget * cfg.budget_fraction
+        if cfg.record_root:
+            self.last_root = None
 
         candidates, priors = self._root_candidates(view, rng)
         if len(candidates) == 1:
@@ -436,7 +459,29 @@ class MctsPlanner:
         best = self._best_action(candidates, worlds, cfg.deviate_margin)
         self.last_stats = {"iterations": iterations, "worlds": len(worlds),
                            "elapsed_s": self._clock() - t0}
+        if cfg.record_root:
+            self.last_root = self._record_root(candidates, worlds)
         return list(best)
+
+    @staticmethod
+    def _record_root(candidates, worlds):
+        """Per-option aggregate root visits for single-select decisions, as the
+        policy-net training target (train/gen_policy.py). Returns None unless
+        every candidate is one option (multi-/count-select is out of the policy
+        net's distribution) and some visits were accrued."""
+        if not worlds or not candidates:
+            return None
+        if not all(len(a) == 1 for a in candidates):
+            return None
+        totals = [0] * len(candidates)
+        for world in worlds:
+            for i, edge in enumerate(world.root.edges):
+                if i < len(totals):
+                    totals[i] += edge[2]
+        if sum(totals) <= 0 or len(candidates) < 2:
+            return None
+        return {"opt_visits": {candidates[i][0]: totals[i]
+                               for i in range(len(candidates))}}
 
     # ---- root candidates --------------------------------------------------
 
@@ -450,6 +495,12 @@ class MctsPlanner:
         if lo == hi and lo in (0, n):  # forced: empty or take-everything
             return [sorted(range(lo))] if lo == 0 else [list(range(n))], [1.0]
         scores = self._prior_agent.score_options(view)
+        # Learned action prior (SOT-1916): only the single-select case is in the
+        # policy net's training distribution (train/gen_policy.py records those),
+        # so the learned correction is applied there and count-selections keep
+        # the greedy prior. The greedy scores are the net's own input feature.
+        if self._learned_prior is not None and lo == hi == 1:
+            scores = self._learned_prior.prior_scores(view, scores)
         order = sorted(range(n), key=lambda i: (-scores[i], i))
         if lo == hi == 1:
             order = self._guarded_root_order(view, order)
