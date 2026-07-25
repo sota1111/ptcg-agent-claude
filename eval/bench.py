@@ -84,8 +84,17 @@ def play_match(agent0, agent1):
 
 
 def run_bench(agent_a: str, agent_b: str, n: int, seed: int, deck_path: str,
-              config_a=None, config_b=None):
+              config_a=None, config_b=None, deck_b_path=None):
+    """Play N side-alternating matches of A vs B.
+
+    ``deck_b_path`` (SOT-1940) gives agent B a DIFFERENT deck than A — used by
+    the opponent-pool robustness driver to pit the champion (A, its own deck)
+    against opponents piloting other archetypes. When None, B reuses A's deck
+    (the historical mirror-deck behaviour; the engine already supports the
+    asymmetric ``battle_start`` used here, cf. eval/battle_vs.py).
+    """
     deck = load_deck(deck_path)
+    deck_b = load_deck(deck_b_path) if deck_b_path else deck
     base = Rng(seed)
     stats = {
         "wins_a": 0, "wins_b": 0, "draws": 0, "unfinished": 0,
@@ -103,7 +112,7 @@ def run_bench(agent_a: str, agent_b: str, n: int, seed: int, deck_path: str,
         seed_a = base.child(f"match{i}.a").seed
         seed_b = base.child(f"match{i}.b").seed
         a = make_agent(agent_a, seed=seed_a, deck=deck, **(config_a or {}))
-        b = make_agent(agent_b, seed=seed_b, deck=deck, **(config_b or {}))
+        b = make_agent(agent_b, seed=seed_b, deck=deck_b, **(config_b or {}))
         a_plays_first = (i % 2 == 0)  # alternate sides every match
         p0, p1 = (a, b) if a_plays_first else (b, a)
         t0 = time.perf_counter()
@@ -140,7 +149,7 @@ def run_bench(agent_a: str, agent_b: str, n: int, seed: int, deck_path: str,
     ci_lo, ci_hi = wilson_ci(stats["wins_a"], decided)
     report = {
         "agent_a": agent_a, "agent_b": agent_b, "n_matches": n, "seed": seed,
-        "deck": deck_path,
+        "deck": deck_path, "deck_b": deck_b_path or deck_path,
         "config_a": config_a or {}, "config_b": config_b or {},
         **stats,
         "winrate_a_excl_draws": (stats["wins_a"] / decided) if decided else None,
@@ -168,6 +177,8 @@ def main():
     parser.add_argument("--n", type=int, default=100)
     parser.add_argument("--seed", type=int, default=20260720)
     parser.add_argument("--deck", default="deck.csv")
+    parser.add_argument("--deck-b", default=None,
+                        help="give agent B a different deck (default: same as A)")
     parser.add_argument("--json", default=None,
                         help="write the full report to this JSON file")
     parser.add_argument("--config-a", default=None,
@@ -182,7 +193,8 @@ def main():
           f"n={args.n}, seed={args.seed} "
           f"config_a={config_a} config_b={config_b}", flush=True)
     report = run_bench(args.agent_a, args.agent_b, args.n, args.seed,
-                       args.deck, config_a=config_a, config_b=config_b)
+                       args.deck, config_a=config_a, config_b=config_b,
+                       deck_b_path=args.deck_b)
 
     tpm = report["time_per_match_sec"]
     tpd = report["time_per_decision_ms"]
