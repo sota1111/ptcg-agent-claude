@@ -434,8 +434,18 @@ class MctsPlanner:
                 pass
 
         best = self._best_action(candidates, worlds, cfg.deviate_margin)
+        # Expose the aggregated root visit distribution for expert-iteration
+        # data recording (SOT-1914). Diagnostic-only: it does not touch the
+        # returned action, so champion behaviour is byte-identical.
+        root_visits = [0] * len(candidates)
+        for w in worlds:
+            for i, edge in enumerate(w.root.edges):
+                if i < len(root_visits):
+                    root_visits[i] += edge[2]
         self.last_stats = {"iterations": iterations, "worlds": len(worlds),
-                           "elapsed_s": self._clock() - t0}
+                           "elapsed_s": self._clock() - t0,
+                           "root_actions": [list(a) for a in candidates],
+                           "root_visits": root_visits}
         return list(best)
 
     # ---- root candidates --------------------------------------------------
