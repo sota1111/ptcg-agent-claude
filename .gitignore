@@ -17,3 +17,6 @@ __pycache__/
 /train/weights/
 # raw step-level replays (~2MB each, re-fetchable via analysis/kaggle_replays.py)
 /analysis/data/replays/
+
+# SOT-1911 expert-iteration: local venv (torch/CUDA, gitignored)
+/.venv/
