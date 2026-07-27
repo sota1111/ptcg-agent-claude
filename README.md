@@ -108,6 +108,38 @@ python3 eval/compare_decks.py --n-per-pair 40 \
     --seed 1794001 --json eval/results/screen.json  # candidate round-robin
 ```
 
+## Meta-following deck-pool reorg (SOT-2055)
+
+`tools/deck_update.py` keeps the `decks/candidates` **deck-selection & opponent
+field** in sync with the public PTCG-AI-Battle metagame
+(<https://ptcg-meta.vercel.app>). Deck count is *not* frozen for claude — the
+tool reorganizes the pool from the existing legal library, dropping
+over-concentrated near-duplicates and off-meta decks while covering the current
+top archetypes.
+
+**Pool role.** Upper-meta coverage **+** upper-meta resistance: field the
+current Top100 leaders *and* keep a floor of counter decks that answer them,
+carry the board-leader (high rank / low share, e.g. タケルライコ / Raging Bolt)
+and a few baseline / tournament anchors (incl. the shared champion
+`26_stw_champion.csv`) for diversity. Selection weighs the **Top10 / Top20 /
+Top100 bands, rank, trend and continuity separately — never usage share alone**
+(a deck can sit #1 on the board yet be 1% of the Top100).
+
+```bash
+python3 tools/deck_update.py --inventory                 # library + legality + meta map
+python3 tools/deck_update.py --latest --dry-run          # preview (writes nothing)
+python3 tools/deck_update.py --latest --apply --seed 0   # write decks/meta_active/ + rollback
+python3 tools/deck_update.py --rollback decks/meta_active/rollback/<file>.json
+python3 tools/deck_update.py --source https://ptcg-meta.vercel.app --fetch --latest-n 5  # refresh snapshots (network)
+python3 eval/eval_meta_pool.py --matches 8 --seed 0      # screen the active pool vs representative meta decks
+```
+
+Analysis/selection read the committed snapshots under `decks/meta/snapshots`
+and are deterministic (same input + seed ⇒ same plan; re-apply is a fixed
+point). `--fetch` is the only network path. The active pool, its per-deck role
++ reason, add/remove reasons and rollback manifests live under
+`decks/meta_active/`. Full write-up: `docs/deck_pool_meta_2026-07.md`.
+
 ## Agents (`agents/`)
 
 - `random_agent.py` — uniform random legal action (floor baseline).

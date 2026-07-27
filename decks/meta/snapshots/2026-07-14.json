@@ -1,0 +1,222 @@
+{
+  "date": "2026-07-14",
+  "source_url": "https://ptcg-meta.vercel.app/daily/2026-07-14.html",
+  "lb_csv": "pokemon-tcg-ai-battle-publicleaderboard-2026-07-14T09:59:12.csv",
+  "bands": {
+    "top10": {
+      "フーディン": {
+        "teams": 5,
+        "share": 50.0
+      },
+      "イワパレス": {
+        "teams": 3,
+        "share": 30.0
+      },
+      "マリィのオーロンゲex": {
+        "teams": 1,
+        "share": 10.0
+      },
+      "バチンキー/カミッチュ/ペロッパフ": {
+        "teams": 1,
+        "share": 10.0
+      }
+    },
+    "top20": {
+      "フーディン": {
+        "teams": 11,
+        "share": 55.0
+      },
+      "イワパレス": {
+        "teams": 4,
+        "share": 20.0
+      },
+      "マリィのオーロンゲex": {
+        "teams": 2,
+        "share": 10.0
+      },
+      "メガスターミーex": {
+        "teams": 2,
+        "share": 10.0
+      },
+      "バチンキー/カミッチュ/ペロッパフ": {
+        "teams": 1,
+        "share": 5.0
+      }
+    },
+    "top100": [
+      {
+        "rank": 1,
+        "archetype": "フーディン",
+        "teams": 38,
+        "share": 38.0
+      },
+      {
+        "rank": 2,
+        "archetype": "イワパレス",
+        "teams": 15,
+        "share": 15.0
+      },
+      {
+        "rank": 3,
+        "archetype": "マリィのオーロンゲex",
+        "teams": 13,
+        "share": 13.0
+      },
+      {
+        "rank": 4,
+        "archetype": "メガルカリオex",
+        "teams": 10,
+        "share": 10.0
+      },
+      {
+        "rank": 5,
+        "archetype": "ブリジュラスex",
+        "teams": 5,
+        "share": 5.0
+      },
+      {
+        "rank": 6,
+        "archetype": "メガスターミーex",
+        "teams": 4,
+        "share": 4.0
+      },
+      {
+        "rank": 7,
+        "archetype": "シロナのガブリアスex",
+        "teams": 4,
+        "share": 4.0
+      },
+      {
+        "rank": 8,
+        "archetype": "バチンキー/カミッチュ/セレビィ",
+        "teams": 2,
+        "share": 2.0
+      },
+      {
+        "rank": 9,
+        "archetype": "ドラパルトex",
+        "teams": 2,
+        "share": 2.0
+      },
+      {
+        "rank": 10,
+        "archetype": "タケルライコex",
+        "teams": 1,
+        "share": 1.0
+      },
+      {
+        "rank": 11,
+        "archetype": "オーガポン みどりのめんex",
+        "teams": 1,
+        "share": 1.0
+      },
+      {
+        "rank": 12,
+        "archetype": "ノココッチ",
+        "teams": 1,
+        "share": 1.0
+      },
+      {
+        "rank": 13,
+        "archetype": "クマシュン",
+        "teams": 1,
+        "share": 1.0
+      },
+      {
+        "rank": 14,
+        "archetype": "イイネイヌ/ソルロック",
+        "teams": 1,
+        "share": 1.0
+      },
+      {
+        "rank": 15,
+        "archetype": "ロケット団のドンカラス",
+        "teams": 1,
+        "share": 1.0
+      },
+      {
+        "rank": 16,
+        "archetype": "シャンデラ",
+        "teams": 1,
+        "share": 1.0
+      }
+    ]
+  },
+  "lb_leaders": [
+    {
+      "rank": 1,
+      "team": "Majkel1337",
+      "score": 1285.1,
+      "archetype": "フーディン",
+      "type": "超 {P}"
+    },
+    {
+      "rank": 2,
+      "team": "Budew",
+      "score": 1193.7,
+      "archetype": "イワパレス",
+      "type": "草 {G}"
+    },
+    {
+      "rank": 3,
+      "team": "Yushin Ito",
+      "score": 1186.4,
+      "archetype": "フーディン",
+      "type": "超 {P}"
+    },
+    {
+      "rank": 4,
+      "team": "Rmy",
+      "score": 1159.3,
+      "archetype": "イワパレス",
+      "type": "草 {G}"
+    },
+    {
+      "rank": 5,
+      "team": "THIRD PTCG Club",
+      "score": 1151.0,
+      "archetype": "フーディン",
+      "type": "超 {P}"
+    },
+    {
+      "rank": 6,
+      "team": "MPGaming",
+      "score": 1150.5,
+      "archetype": "イワパレス",
+      "type": "草 {G}"
+    },
+    {
+      "rank": 7,
+      "team": "monnosuke",
+      "score": 1139.5,
+      "archetype": "マリィのオーロンゲex",
+      "type": "悪 {D}"
+    },
+    {
+      "rank": 8,
+      "team": "vibechu",
+      "score": 1137.5,
+      "archetype": "バチンキー/カミッチュ/ペロッパフ",
+      "type": "草 {G}/超 {P}"
+    },
+    {
+      "rank": 9,
+      "team": "bono",
+      "score": 1136.6,
+      "archetype": "フーディン",
+      "type": "超 {P}"
+    },
+    {
+      "rank": 10,
+      "team": "ei ei ei yikuso",
+      "score": 1133.6,
+      "archetype": "フーディン",
+      "type": "超 {P}"
+    }
+  ],
+  "_provenance": {
+    "fetched_on": "2026-07-27",
+    "tool": "tools/deck_update.py --fetch",
+    "note": "Parsed from ptcg-meta.vercel.app static daily page; committed for reproducible analysis."
+  }
+}
