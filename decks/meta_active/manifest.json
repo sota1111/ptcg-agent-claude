@@ -1,0 +1,249 @@
+{
+  "as_of": "2026-07-27",
+  "seed": 0,
+  "snapshot_dates": [
+    "2026-07-14",
+    "2026-07-20",
+    "2026-07-25",
+    "2026-07-26",
+    "2026-07-27"
+  ],
+  "source": "https://ptcg-meta.vercel.app",
+  "role": "upper-meta coverage + upper-meta resistance (counters)",
+  "prior_count": 26,
+  "active_count": 23,
+  "target_size": 26,
+  "max_changes": 6,
+  "churn": 3,
+  "churn_limited": false,
+  "added": [],
+  "removed": [
+    {
+      "file": "01_dragapult.csv",
+      "reason": "upper_meta; ドラパルトex (Top100 4.0% rank#4, Top20 5.0%, Top10 0.0%, trend 0.2, present 5/5, LB#999)"
+    },
+    {
+      "file": "05_dragapult_dudunsparce.csv",
+      "reason": "upper_meta; ドラパルトex (Top100 4.0% rank#4, Top20 5.0%, Top10 0.0%, trend 0.2, present 5/5, LB#999)"
+    },
+    {
+      "file": "22_dragapult_ex_naic_2nd.csv",
+      "reason": "upper_meta; ドラパルトex (Top100 4.0% rank#4, Top20 5.0%, Top10 0.0%, trend 0.2, present 5/5, LB#999)"
+    }
+  ],
+  "capped_over_concentration": [
+    "22_dragapult_ex_naic_2nd.csv",
+    "05_dragapult_dudunsparce.csv",
+    "01_dragapult.csv"
+  ],
+  "decks": [
+    {
+      "file": "15_marnie_s_grimmsnarl_ex.csv",
+      "source_group": "candidates",
+      "archetype": "Marnie's Grimmsnarl ex",
+      "meta_key": "マリィのオーロンゲex",
+      "role": "upper_meta",
+      "meta_score": 256.0,
+      "reason": "upper_meta; マリィのオーロンゲex (Top100 54.0% rank#1, Top20 50.0%, Top10 40.0%, trend 11.5, present 5/5, LB#1)"
+    },
+    {
+      "file": "12_alakazam_dudunsparce.csv",
+      "source_group": "candidates",
+      "archetype": "Alakazam Dudunsparce (フーディン・ノココッチ)",
+      "meta_key": "フーディン",
+      "role": "upper_meta",
+      "meta_score": 86.0,
+      "reason": "upper_meta; フーディン (Top100 26.0% rank#2, Top20 20.0%, Top10 20.0%, trend -4.5, present 5/5, LB#6)"
+    },
+    {
+      "file": "20_cynthia_s_garchomp_ex.csv",
+      "source_group": "candidates",
+      "archetype": "Cynthia's Garchomp ex",
+      "meta_key": "シロナのガブリアスex",
+      "role": "upper_meta",
+      "meta_score": 49.0,
+      "reason": "upper_meta; シロナのガブリアスex (Top100 3.0% rank#6, Top20 10.0%, Top10 20.0%, trend 0.0, present 5/5, LB#8)"
+    },
+    {
+      "file": "02_raging_bolt_ogerpon.csv",
+      "source_group": "candidates",
+      "archetype": "Raging Bolt Ogerpon (タケルライコ・オーガポン)",
+      "meta_key": "タケルライコex",
+      "role": "low_usage_top",
+      "meta_score": 46.0,
+      "reason": "low_usage_top; タケルライコex (Top100 1.0% rank#7, Top20 5.0%, Top10 10.0%, trend 0.0, present 5/5, LB#7)"
+    },
+    {
+      "file": "16_crustle_mysterious_rock_inn.csv",
+      "source_group": "candidates",
+      "archetype": "Crustle Mysterious Rock Inn",
+      "meta_key": "イワパレス",
+      "role": "upper_meta",
+      "meta_score": 25.0,
+      "reason": "upper_meta; イワパレス (Top100 6.0% rank#3, Top20 5.0%, Top10 0.0%, trend -2.3, present 5/5, LB#999)"
+    },
+    {
+      "file": "04_dragapult_dusknoir.csv",
+      "source_group": "candidates",
+      "archetype": "Dragapult Dusknoir (ドラパルト・ヨノワール型)",
+      "meta_key": "ドラパルトex",
+      "role": "upper_meta",
+      "meta_score": 24.6,
+      "reason": "upper_meta; ドラパルトex (Top100 4.0% rank#4, Top20 5.0%, Top10 0.0%, trend 0.2, present 5/5, LB#999)"
+    },
+    {
+      "file": "03_dragapult_blaziken.csv",
+      "source_group": "candidates",
+      "archetype": "Dragapult Blaziken (ドラパルト+バシャーモ)",
+      "meta_key": "ドラパルトex",
+      "role": "upper_meta",
+      "meta_score": 24.6,
+      "reason": "upper_meta; ドラパルトex (Top100 4.0% rank#4, Top20 5.0%, Top10 0.0%, trend 0.2, present 5/5, LB#999)"
+    },
+    {
+      "file": "13_festival_lead.csv",
+      "source_group": "candidates",
+      "archetype": "Festival Lead (カミッチュ/祭り屋)",
+      "meta_key": "バチンキー/カミッチュ/ペロッパフ",
+      "role": "emerging",
+      "meta_score": 15.2,
+      "reason": "emerging; バチンキー/カミッチュ/ペロッパフ (Top100 1.0% rank#9, Top20 0.0%, Top10 0.0%, trend 0.4, present 3/5, LB#999)"
+    },
+    {
+      "file": "24_n_s_zoroark_ex_naic_10th.csv",
+      "source_group": "candidates",
+      "archetype": "N's Zoroark ex NAIC 10th",
+      "meta_key": "Nのゾロアークex",
+      "role": "counter",
+      "meta_score": 8.0,
+      "reason": "counter; Nのゾロアークex (Top100 0.0% rank#999, Top20 0.0%, Top10 0.0%, trend 0.0, present 3/5, LB#999)"
+    },
+    {
+      "file": "18_rocket_s_honchkrow.csv",
+      "source_group": "candidates",
+      "archetype": "Rocket's Honchkrow",
+      "meta_key": null,
+      "role": "counter",
+      "meta_score": 8.0,
+      "reason": "counter; off-meta (no current Top100 presence)"
+    },
+    {
+      "file": "14_mega_lucario_ex.csv",
+      "source_group": "candidates",
+      "archetype": "Mega Lucario ex",
+      "meta_key": "メガルカリオex",
+      "role": "counter",
+      "meta_score": 8.0,
+      "reason": "counter; メガルカリオex (Top100 0.0% rank#999, Top20 0.0%, Top10 0.0%, trend -2.3, present 3/5, LB#999)"
+    },
+    {
+      "file": "25_mega_lopunny_ex.csv",
+      "source_group": "candidates",
+      "archetype": "Mega Lopunny ex",
+      "meta_key": null,
+      "role": "counter",
+      "meta_score": 8.0,
+      "reason": "counter; off-meta (no current Top100 presence)"
+    },
+    {
+      "file": "17_rocket_s_mewtwo_ex.csv",
+      "source_group": "candidates",
+      "archetype": "Rocket's Mewtwo ex",
+      "meta_key": null,
+      "role": "counter",
+      "meta_score": 8.0,
+      "reason": "counter; off-meta (no current Top100 presence)"
+    },
+    {
+      "file": "08_ogerpon_box.csv",
+      "source_group": "candidates",
+      "archetype": "Ogerpon Box (オーガポンバレット)",
+      "meta_key": null,
+      "role": "baseline",
+      "meta_score": 1.0,
+      "reason": "baseline; off-meta (no current Top100 presence)"
+    },
+    {
+      "file": "06_hydrapple.csv",
+      "source_group": "candidates",
+      "archetype": "Hydrapple (カミツオロチ)",
+      "meta_key": null,
+      "role": "baseline",
+      "meta_score": 1.0,
+      "reason": "baseline; off-meta (no current Top100 presence)"
+    },
+    {
+      "file": "10_hop_s_trevenant.csv",
+      "source_group": "candidates",
+      "archetype": "Hop's Trevenant (ホップのオーロット)",
+      "meta_key": "ホップのオーロット",
+      "role": "baseline",
+      "meta_score": 1.0,
+      "reason": "baseline; off-meta (no current Top100 presence)"
+    },
+    {
+      "file": "19_ethan_s_typhlosion.csv",
+      "source_group": "candidates",
+      "archetype": "Ethan's Typhlosion",
+      "meta_key": null,
+      "role": "baseline",
+      "meta_score": 1.0,
+      "reason": "baseline; off-meta (no current Top100 presence)"
+    },
+    {
+      "file": "26_stw_champion.csv",
+      "source_group": "candidates",
+      "archetype": "STW champion (shared)",
+      "meta_key": null,
+      "role": "baseline",
+      "meta_score": 1.0,
+      "reason": "baseline; off-meta (no current Top100 presence)"
+    },
+    {
+      "file": "23_slowking_naic_4th.csv",
+      "source_group": "candidates",
+      "archetype": "Slowking NAIC 4th",
+      "meta_key": null,
+      "role": "baseline",
+      "meta_score": 1.0,
+      "reason": "baseline; off-meta (no current Top100 presence)"
+    },
+    {
+      "file": "07_n_s_zoroark_n.csv",
+      "source_group": "candidates",
+      "archetype": "N's Zoroark (Nのゾロアーク)",
+      "meta_key": "Nのゾロアークex",
+      "role": "baseline",
+      "meta_score": 1.0,
+      "reason": "baseline; Nのゾロアークex (Top100 0.0% rank#999, Top20 0.0%, Top10 0.0%, trend 0.0, present 3/5, LB#999)"
+    },
+    {
+      "file": "21_lillie_s_clefairy_ex_naic_champion.csv",
+      "source_group": "candidates",
+      "archetype": "Lillie's Clefairy ex NAIC Champion",
+      "meta_key": null,
+      "role": "baseline",
+      "meta_score": 1.0,
+      "reason": "baseline; off-meta (no current Top100 presence)"
+    },
+    {
+      "file": "09_slowking.csv",
+      "source_group": "candidates",
+      "archetype": "Slowking (ヤドラン/スッカラカン系)",
+      "meta_key": null,
+      "role": "baseline",
+      "meta_score": 1.0,
+      "reason": "baseline; off-meta (no current Top100 presence)"
+    },
+    {
+      "file": "11_lillie_s_clefairy.csv",
+      "source_group": "candidates",
+      "archetype": "Lillie's Clefairy (リーリエのピッピ)",
+      "meta_key": null,
+      "role": "baseline",
+      "meta_score": 1.0,
+      "reason": "baseline; off-meta (no current Top100 presence)"
+    }
+  ],
+  "rollback_manifest": "decks/meta_active/rollback/2026-07-27-01.json"
+}

@@ -1,0 +1,33 @@
+{
+  "restores_to": "full candidate pool (no prior meta_active)",
+  "prior_active": [
+    "01_dragapult.csv",
+    "02_raging_bolt_ogerpon.csv",
+    "03_dragapult_blaziken.csv",
+    "04_dragapult_dusknoir.csv",
+    "05_dragapult_dudunsparce.csv",
+    "06_hydrapple.csv",
+    "07_n_s_zoroark_n.csv",
+    "08_ogerpon_box.csv",
+    "09_slowking.csv",
+    "10_hop_s_trevenant.csv",
+    "11_lillie_s_clefairy.csv",
+    "12_alakazam_dudunsparce.csv",
+    "13_festival_lead.csv",
+    "14_mega_lucario_ex.csv",
+    "15_marnie_s_grimmsnarl_ex.csv",
+    "16_crustle_mysterious_rock_inn.csv",
+    "17_rocket_s_mewtwo_ex.csv",
+    "18_rocket_s_honchkrow.csv",
+    "19_ethan_s_typhlosion.csv",
+    "20_cynthia_s_garchomp_ex.csv",
+    "21_lillie_s_clefairy_ex_naic_champion.csv",
+    "22_dragapult_ex_naic_2nd.csv",
+    "23_slowking_naic_4th.csv",
+    "24_n_s_zoroark_ex_naic_10th.csv",
+    "25_mega_lopunny_ex.csv",
+    "26_stw_champion.csv"
+  ],
+  "previous_manifest": null,
+  "created_for_as_of": "2026-07-27"
+}

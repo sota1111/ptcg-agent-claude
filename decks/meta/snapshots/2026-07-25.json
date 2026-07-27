@@ -1,0 +1,208 @@
+{
+  "date": "2026-07-25",
+  "source_url": "https://ptcg-meta.vercel.app/daily/2026-07-25.html",
+  "lb_csv": "pokemon-tcg-ai-battle-publicleaderboard-2026-07-25T11:39:43.csv",
+  "bands": {
+    "top10": {
+      "マリィのオーロンゲex": {
+        "teams": 4,
+        "share": 40.0
+      },
+      "フーディン": {
+        "teams": 3,
+        "share": 30.0
+      },
+      "ロケット団のワナイダー": {
+        "teams": 2,
+        "share": 20.0
+      },
+      "シロナのガブリアスex": {
+        "teams": 1,
+        "share": 10.0
+      }
+    },
+    "top20": {
+      "マリィのオーロンゲex": {
+        "teams": 10,
+        "share": 50.0
+      },
+      "フーディン": {
+        "teams": 4,
+        "share": 20.0
+      },
+      "ロケット団のワナイダー": {
+        "teams": 2,
+        "share": 10.0
+      },
+      "シロナのガブリアスex": {
+        "teams": 2,
+        "share": 10.0
+      },
+      "タケルライコex": {
+        "teams": 1,
+        "share": 5.0
+      },
+      "イワパレス": {
+        "teams": 1,
+        "share": 5.0
+      }
+    },
+    "top100": [
+      {
+        "rank": 1,
+        "archetype": "マリィのオーロンゲex",
+        "teams": 42,
+        "share": 42.0
+      },
+      {
+        "rank": 2,
+        "archetype": "フーディン",
+        "teams": 26,
+        "share": 26.0
+      },
+      {
+        "rank": 3,
+        "archetype": "イワパレス",
+        "teams": 8,
+        "share": 8.0
+      },
+      {
+        "rank": 4,
+        "archetype": "シロナのガブリアスex",
+        "teams": 7,
+        "share": 7.0
+      },
+      {
+        "rank": 5,
+        "archetype": "ロケット団のワナイダー",
+        "teams": 6,
+        "share": 6.0
+      },
+      {
+        "rank": 6,
+        "archetype": "ドラパルトex",
+        "teams": 2,
+        "share": 2.0
+      },
+      {
+        "rank": 7,
+        "archetype": "メガルカリオex",
+        "teams": 2,
+        "share": 2.0
+      },
+      {
+        "rank": 8,
+        "archetype": "Nのゾロアークex",
+        "teams": 2,
+        "share": 2.0
+      },
+      {
+        "rank": 9,
+        "archetype": "タケルライコex",
+        "teams": 1,
+        "share": 1.0
+      },
+      {
+        "rank": 10,
+        "archetype": "ノココッチ",
+        "teams": 1,
+        "share": 1.0
+      },
+      {
+        "rank": 11,
+        "archetype": "クマシュン",
+        "teams": 1,
+        "share": 1.0
+      },
+      {
+        "rank": 12,
+        "archetype": "シャンデラ",
+        "teams": 1,
+        "share": 1.0
+      },
+      {
+        "rank": 13,
+        "archetype": "バチンキー/カミッチュ/ペロッパフ",
+        "teams": 1,
+        "share": 1.0
+      }
+    ]
+  },
+  "lb_leaders": [
+    {
+      "rank": 1,
+      "team": "__Taichicchi__",
+      "score": 1192.4,
+      "archetype": "マリィのオーロンゲex",
+      "type": "悪 {D}"
+    },
+    {
+      "rank": 2,
+      "team": "ktr",
+      "score": 1148.3,
+      "archetype": "マリィのオーロンゲex",
+      "type": "悪 {D}"
+    },
+    {
+      "rank": 3,
+      "team": "Dieter",
+      "score": 1120.0,
+      "archetype": "ロケット団のワナイダー",
+      "type": "草 {G}"
+    },
+    {
+      "rank": 4,
+      "team": "THIRD PTCG Club",
+      "score": 1118.2,
+      "archetype": "ロケット団のワナイダー",
+      "type": "草 {G}"
+    },
+    {
+      "rank": 5,
+      "team": "Yushin Ito",
+      "score": 1116.9,
+      "archetype": "フーディン",
+      "type": "超 {P}"
+    },
+    {
+      "rank": 6,
+      "team": "Dominic Peel",
+      "score": 1115.9,
+      "archetype": "マリィのオーロンゲex",
+      "type": "悪 {D}"
+    },
+    {
+      "rank": 7,
+      "team": "Benarg",
+      "score": 1114.8,
+      "archetype": "フーディン",
+      "type": "超 {P}"
+    },
+    {
+      "rank": 8,
+      "team": "Majkel1337",
+      "score": 1113.8,
+      "archetype": "フーディン",
+      "type": "超 {P}"
+    },
+    {
+      "rank": 9,
+      "team": "bono",
+      "score": 1106.8,
+      "archetype": "シロナのガブリアスex",
+      "type": "闘 {F}"
+    },
+    {
+      "rank": 10,
+      "team": "me and the lads",
+      "score": 1104.8,
+      "archetype": "マリィのオーロンゲex",
+      "type": "悪 {D}"
+    }
+  ],
+  "_provenance": {
+    "fetched_on": "2026-07-27",
+    "tool": "tools/deck_update.py --fetch",
+    "note": "Parsed from ptcg-meta.vercel.app static daily page; committed for reproducible analysis."
+  }
+}

@@ -1,0 +1,234 @@
+{
+  "date": "2026-07-20",
+  "source_url": "https://ptcg-meta.vercel.app/daily/2026-07-20.html",
+  "lb_csv": "pokemon-tcg-ai-battle-publicleaderboard-2026-07-20T08:39:39.csv",
+  "bands": {
+    "top10": {
+      "フーディン": {
+        "teams": 3,
+        "share": 30.0
+      },
+      "マリィのオーロンゲex": {
+        "teams": 3,
+        "share": 30.0
+      },
+      "シロナのガブリアスex": {
+        "teams": 1,
+        "share": 10.0
+      },
+      "ロケット団のワナイダー": {
+        "teams": 1,
+        "share": 10.0
+      },
+      "ドラパルトex": {
+        "teams": 1,
+        "share": 10.0
+      },
+      "イワパレス": {
+        "teams": 1,
+        "share": 10.0
+      }
+    },
+    "top20": {
+      "マリィのオーロンゲex": {
+        "teams": 9,
+        "share": 45.0
+      },
+      "フーディン": {
+        "teams": 5,
+        "share": 25.0
+      },
+      "ロケット団のワナイダー": {
+        "teams": 2,
+        "share": 10.0
+      },
+      "ドラパルトex": {
+        "teams": 2,
+        "share": 10.0
+      },
+      "シロナのガブリアスex": {
+        "teams": 1,
+        "share": 5.0
+      },
+      "イワパレス": {
+        "teams": 1,
+        "share": 5.0
+      }
+    },
+    "top100": [
+      {
+        "rank": 1,
+        "archetype": "フーディン",
+        "teams": 41,
+        "share": 41.0
+      },
+      {
+        "rank": 2,
+        "archetype": "マリィのオーロンゲex",
+        "teams": 20,
+        "share": 20.0
+      },
+      {
+        "rank": 3,
+        "archetype": "イワパレス",
+        "teams": 11,
+        "share": 11.0
+      },
+      {
+        "rank": 4,
+        "archetype": "ロケット団のワナイダー",
+        "teams": 5,
+        "share": 5.0
+      },
+      {
+        "rank": 5,
+        "archetype": "シロナのガブリアスex",
+        "teams": 4,
+        "share": 4.0
+      },
+      {
+        "rank": 6,
+        "archetype": "ドラパルトex",
+        "teams": 4,
+        "share": 4.0
+      },
+      {
+        "rank": 7,
+        "archetype": "メガルカリオex",
+        "teams": 3,
+        "share": 3.0
+      },
+      {
+        "rank": 8,
+        "archetype": "バチンキー/カミッチュ/セレビィ",
+        "teams": 2,
+        "share": 2.0
+      },
+      {
+        "rank": 9,
+        "archetype": "メガスターミーex",
+        "teams": 2,
+        "share": 2.0
+      },
+      {
+        "rank": 10,
+        "archetype": "ブリジュラスex",
+        "teams": 2,
+        "share": 2.0
+      },
+      {
+        "rank": 11,
+        "archetype": "メガサメハダーex",
+        "teams": 1,
+        "share": 1.0
+      },
+      {
+        "rank": 12,
+        "archetype": "Nのゾロアークex",
+        "teams": 1,
+        "share": 1.0
+      },
+      {
+        "rank": 13,
+        "archetype": "ノココッチ",
+        "teams": 1,
+        "share": 1.0
+      },
+      {
+        "rank": 14,
+        "archetype": "メガサーナイトex",
+        "teams": 1,
+        "share": 1.0
+      },
+      {
+        "rank": 15,
+        "archetype": "シャンデラ",
+        "teams": 1,
+        "share": 1.0
+      },
+      {
+        "rank": 16,
+        "archetype": "タケルライコex",
+        "teams": 1,
+        "share": 1.0
+      }
+    ]
+  },
+  "lb_leaders": [
+    {
+      "rank": 1,
+      "team": "junlee789",
+      "score": 1229.9,
+      "archetype": "シロナのガブリアスex",
+      "type": "闘 {F}"
+    },
+    {
+      "rank": 2,
+      "team": "Yushin Ito",
+      "score": 1205.3,
+      "archetype": "フーディン",
+      "type": "超 {P}"
+    },
+    {
+      "rank": 3,
+      "team": "THIRD PTCG Club",
+      "score": 1181.7,
+      "archetype": "ロケット団のワナイダー",
+      "type": "草 {G}"
+    },
+    {
+      "rank": 4,
+      "team": "__Taichicchi__",
+      "score": 1171.2,
+      "archetype": "マリィのオーロンゲex",
+      "type": "悪 {D}"
+    },
+    {
+      "rank": 5,
+      "team": "Majkel1337",
+      "score": 1158.4,
+      "archetype": "フーディン",
+      "type": "超 {P}"
+    },
+    {
+      "rank": 6,
+      "team": "LumenLiquidity",
+      "score": 1151.8,
+      "archetype": "ドラパルトex",
+      "type": "ドラゴン"
+    },
+    {
+      "rank": 7,
+      "team": "Oshbocker",
+      "score": 1148.1,
+      "archetype": "イワパレス",
+      "type": "草 {G}"
+    },
+    {
+      "rank": 8,
+      "team": "Kotaro OKUYAMA",
+      "score": 1140.4,
+      "archetype": "マリィのオーロンゲex",
+      "type": "悪 {D}"
+    },
+    {
+      "rank": 9,
+      "team": "齐乐",
+      "score": 1128.5,
+      "archetype": "フーディン",
+      "type": "超 {P}"
+    },
+    {
+      "rank": 10,
+      "team": "jiatu.l",
+      "score": 1123.2,
+      "archetype": "マリィのオーロンゲex",
+      "type": "悪 {D}"
+    }
+  ],
+  "_provenance": {
+    "fetched_on": "2026-07-27",
+    "tool": "tools/deck_update.py --fetch",
+    "note": "Parsed from ptcg-meta.vercel.app static daily page; committed for reproducible analysis."
+  }
+}
