@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile submission sources
+        run: python -m compileall -q main.py agents analysis eval tools
+      - name: Run engine-independent tests
+        run: |
+          python -m unittest -v \
+            tests.test_deck_pool_meta \
+            tests.test_early_bench \
+            tests.test_mcts \
+            tests.test_policy_net \
+            tests.test_rule_policy \
+            tests.test_selfplay_shard \
+            tests.test_submission \
+            tests.test_take_tactics
+      - name: Validate submission builder syntax
+        run: bash -n scripts/build_submission.sh
