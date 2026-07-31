@@ -12,7 +12,9 @@ for required in main.py deck.csv agents cg; do
   fi
 done
 
-tar -C "$REPO" -czf "$ARCHIVE" \
+# cg/data may be local symlinks to the shared runtime checkout. Kaggle extracts
+# the archive in isolation, so store their contents rather than the links.
+tar --dereference -C "$REPO" -czf "$ARCHIVE" \
   --exclude='__pycache__' --exclude='*.pyc' \
   main.py deck.csv agents cg
 gzip -t "$ARCHIVE"
