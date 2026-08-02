@@ -1,0 +1,69 @@
+{
+  "agent_a": "mcts",
+  "agent_b": "mcts",
+  "n_matches": 30,
+  "seed": 22831,
+  "deck": "deck.csv",
+  "deck_b": "deck.csv",
+  "config_a": {
+    "max_root_actions": 6,
+    "max_tree_depth": 1,
+    "rollout_turns": 0,
+    "rollout_depth": 0,
+    "n_worlds": 4,
+    "time_budget_s": 0.8,
+    "deviate_margin": 0.1,
+    "value_net": "train/weights/value_v3.json",
+    "eval_weights": {
+      "deck_low": -0.2,
+      "deck_low_at": 14,
+      "deck_low_prize_gate": 3
+    }
+  },
+  "config_b": {
+    "max_root_actions": 6,
+    "max_tree_depth": 1,
+    "rollout_turns": 100,
+    "rollout_depth": 200,
+    "n_worlds": 4,
+    "time_budget_s": 0.8,
+    "deviate_margin": 0.1,
+    "eval_weights": {
+      "deck_low": -0.2,
+      "deck_low_at": 14,
+      "deck_low_prize_gate": 3
+    }
+  },
+  "wins_a": 13,
+  "wins_b": 17,
+  "draws": 0,
+  "unfinished": 0,
+  "rejects": 0,
+  "exceptions": 0,
+  "fallbacks_a": 0,
+  "fallbacks_b": 0,
+  "decisions": 1298,
+  "budget_violations_a": 0,
+  "budget_violations_b": 0,
+  "planner_fallbacks_a": 0,
+  "planner_fallbacks_b": 0,
+  "degraded_a": 0,
+  "degraded_b": 0,
+  "winrate_a_excl_draws": 0.43333333333333335,
+  "wilson95_excl_draws": [
+    0.2737723743061511,
+    0.6080299045459127
+  ],
+  "winrate_a_draws_half": 0.43333333333333335,
+  "time_per_match_sec": {
+    "mean": 15.759517156305568,
+    "median": 14.908804800536018,
+    "max": 33.491137265984435,
+    "total": 472.78551468916703
+  },
+  "time_per_decision_ms": {
+    "mean": 350.9310172335655,
+    "max": 424.31856314545837
+  },
+  "decisions_per_match_mean": 43.266666666666666
+}

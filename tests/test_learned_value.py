@@ -67,7 +67,7 @@ class TestFeatures(unittest.TestCase):
                            [_obj_pokemon(60, [1])], 4, 38)
         opp_obj = _obj_side(6, [_obj_pokemon(70, [1])], [], 7, 50)
         obs_obj = SimpleNamespace(current=SimpleNamespace(
-            yourIndex=0, players=[me_obj, opp_obj]))
+            yourIndex=0, turn=3, players=[me_obj, opp_obj]))
         self.assertEqual(extract(obs_dict, 0), extract(obs_obj, 0))
 
     def test_empty_observation_is_neutral(self):
