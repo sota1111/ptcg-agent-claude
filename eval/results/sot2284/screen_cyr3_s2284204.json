@@ -1,0 +1,68 @@
+{
+  "agent_a": "mcts",
+  "agent_b": "mcts",
+  "n_matches": 16,
+  "seed": 2284204,
+  "deck": "decks/candidates_sot2284/B_cyrano3.csv",
+  "deck_b": "deck.csv",
+  "config_a": {
+    "max_root_actions": 6,
+    "max_tree_depth": 1,
+    "rollout_turns": 100,
+    "rollout_depth": 200,
+    "n_worlds": 4,
+    "time_budget_s": 0.8,
+    "deviate_margin": 0.1,
+    "eval_weights": {
+      "deck_low": -0.2,
+      "deck_low_at": 14,
+      "deck_low_prize_gate": 3
+    }
+  },
+  "config_b": {
+    "max_root_actions": 6,
+    "max_tree_depth": 1,
+    "rollout_turns": 100,
+    "rollout_depth": 200,
+    "n_worlds": 4,
+    "time_budget_s": 0.8,
+    "deviate_margin": 0.1,
+    "eval_weights": {
+      "deck_low": -0.2,
+      "deck_low_at": 14,
+      "deck_low_prize_gate": 3
+    }
+  },
+  "wins_a": 6,
+  "wins_b": 10,
+  "draws": 0,
+  "unfinished": 0,
+  "rejects": 0,
+  "exceptions": 0,
+  "fallbacks_a": 0,
+  "fallbacks_b": 0,
+  "decisions": 670,
+  "budget_violations_a": 0,
+  "budget_violations_b": 0,
+  "planner_fallbacks_a": 0,
+  "planner_fallbacks_b": 0,
+  "degraded_a": 0,
+  "degraded_b": 0,
+  "winrate_a_excl_draws": 0.375,
+  "wilson95_excl_draws": [
+    0.18480982554752803,
+    0.613593529020652
+  ],
+  "winrate_a_draws_half": 0.375,
+  "time_per_match_sec": {
+    "mean": 22.77446330130988,
+    "median": 21.592637881520204,
+    "max": 54.15181350300554,
+    "total": 364.39141282095807
+  },
+  "time_per_decision_ms": {
+    "mean": 522.2569360434255,
+    "max": 604.7705289440474
+  },
+  "decisions_per_match_mean": 41.875
+}
