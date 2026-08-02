@@ -1,0 +1,71 @@
+{
+  "experiment": "SOT-2283 value-net leaf-eval vs champion @0.8s (feature_version=2)",
+  "candidate": "mcts + value_v3 (rollout_turns=0)",
+  "baseline": "champion FABLE_CONFIG (rollout_turns=100)",
+  "time_budget_s": 0.8,
+  "per_seed": [
+    {
+      "seed": 22831,
+      "wins_a": 13,
+      "wins_b": 17,
+      "draws": 0,
+      "winrate_a_excl_draws": 0.43333333333333335,
+      "wilson95": [
+        0.2737723743061511,
+        0.6080299045459127
+      ]
+    },
+    {
+      "seed": 22832,
+      "wins_a": 14,
+      "wins_b": 16,
+      "draws": 0,
+      "winrate_a_excl_draws": 0.4666666666666667,
+      "wilson95": [
+        0.30232127224128236,
+        0.6385798671847496
+      ]
+    },
+    {
+      "seed": 22833,
+      "wins_a": 11,
+      "wins_b": 19,
+      "draws": 0,
+      "winrate_a_excl_draws": 0.36666666666666664,
+      "wilson95": [
+        0.21873702204017678,
+        0.5448675356639506
+      ]
+    },
+    {
+      "seed": 22834,
+      "wins_a": 12,
+      "wins_b": 18,
+      "draws": 0,
+      "winrate_a_excl_draws": 0.4,
+      "wilson95": [
+        0.245903943260834,
+        0.5767994750172617
+      ]
+    }
+  ],
+  "pooled": {
+    "n_decided": 120,
+    "wins_a": 50,
+    "wins_b": 70,
+    "draws": 0,
+    "winrate_a_excl_draws": 0.4167,
+    "wilson95_excl_draws": [
+      0.3324,
+      0.5061
+    ]
+  },
+  "promotion_gate": "pooled Wilson CI lower > 0.5",
+  "promoted": false,
+  "faults": {
+    "engine_rejects": 0,
+    "agent_exceptions": 0,
+    "budget_violations": 0,
+    "planner_fallbacks": 0
+  }
+}
