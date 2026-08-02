@@ -1,0 +1,211 @@
+{
+  "date": "2026-08-01",
+  "source_url": "https://ptcg-meta.vercel.app/daily/2026-08-01.html",
+  "lb_csv": "pokemon-tcg-ai-battle-publicleaderboard-2026-08-01T10:58:49.csv",
+  "bands": {
+    "top10": {
+      "マリィのオーロンゲex": {
+        "teams": 3,
+        "share": 30.0
+      },
+      "ノココッチ/メガミミロップex": {
+        "teams": 2,
+        "share": 20.0
+      },
+      "オーガポン みどりのめんex": {
+        "teams": 2,
+        "share": 20.0
+      },
+      "イワパレス": {
+        "teams": 1,
+        "share": 10.0
+      },
+      "タケルライコex": {
+        "teams": 1,
+        "share": 10.0
+      },
+      "バチンキー/カミッチュ/ペロッパフ": {
+        "teams": 1,
+        "share": 10.0
+      }
+    },
+    "top20": {
+      "マリィのオーロンゲex": {
+        "teams": 11,
+        "share": 55.0
+      },
+      "ノココッチ/メガミミロップex": {
+        "teams": 2,
+        "share": 10.0
+      },
+      "オーガポン みどりのめんex": {
+        "teams": 2,
+        "share": 10.0
+      },
+      "イワパレス": {
+        "teams": 1,
+        "share": 5.0
+      },
+      "タケルライコex": {
+        "teams": 1,
+        "share": 5.0
+      },
+      "バチンキー/カミッチュ/ペロッパフ": {
+        "teams": 1,
+        "share": 5.0
+      },
+      "シロナのガブリアスex": {
+        "teams": 1,
+        "share": 5.0
+      },
+      "ロケット団のワナイダー": {
+        "teams": 1,
+        "share": 5.0
+      }
+    },
+    "top100": [
+      {
+        "rank": 1,
+        "archetype": "マリィのオーロンゲex",
+        "teams": 62,
+        "share": 62.0
+      },
+      {
+        "rank": 2,
+        "archetype": "イワパレス",
+        "teams": 7,
+        "share": 7.0
+      },
+      {
+        "rank": 3,
+        "archetype": "フーディン",
+        "teams": 7,
+        "share": 7.0
+      },
+      {
+        "rank": 4,
+        "archetype": "オーガポン みどりのめんex",
+        "teams": 6,
+        "share": 6.0
+      },
+      {
+        "rank": 5,
+        "archetype": "バチンキー/カミッチュ/ペロッパフ",
+        "teams": 5,
+        "share": 5.0
+      },
+      {
+        "rank": 6,
+        "archetype": "ドラパルトex",
+        "teams": 4,
+        "share": 4.0
+      },
+      {
+        "rank": 7,
+        "archetype": "ノココッチ/メガミミロップex",
+        "teams": 3,
+        "share": 3.0
+      },
+      {
+        "rank": 8,
+        "archetype": "ロケット団のワナイダー",
+        "teams": 3,
+        "share": 3.0
+      },
+      {
+        "rank": 9,
+        "archetype": "タケルライコex",
+        "teams": 1,
+        "share": 1.0
+      },
+      {
+        "rank": 10,
+        "archetype": "シロナのガブリアスex",
+        "teams": 1,
+        "share": 1.0
+      },
+      {
+        "rank": 11,
+        "archetype": "ヤドキング",
+        "teams": 1,
+        "share": 1.0
+      }
+    ]
+  },
+  "lb_leaders": [
+    {
+      "rank": 1,
+      "team": "Majkel1337",
+      "score": 1257.9,
+      "archetype": "ノココッチ/メガミミロップex",
+      "type": "無色 {C}"
+    },
+    {
+      "rank": 2,
+      "team": "flg",
+      "score": 1175.3,
+      "archetype": "イワパレス",
+      "type": "草 {G}"
+    },
+    {
+      "rank": 3,
+      "team": "Sixth Sense",
+      "score": 1169.1,
+      "archetype": "マリィのオーロンゲex",
+      "type": "悪 {D}"
+    },
+    {
+      "rank": 4,
+      "team": "keidroid",
+      "score": 1157.6,
+      "archetype": "オーガポン みどりのめんex",
+      "type": "草 {G}"
+    },
+    {
+      "rank": 5,
+      "team": "James Cox & Henry Chao",
+      "score": 1153.5,
+      "archetype": "タケルライコex",
+      "type": "ドラゴン"
+    },
+    {
+      "rank": 6,
+      "team": "Rmy",
+      "score": 1143.6,
+      "archetype": "オーガポン みどりのめんex",
+      "type": "草 {G}"
+    },
+    {
+      "rank": 7,
+      "team": "NguyenThanhNhan",
+      "score": 1136.4,
+      "archetype": "マリィのオーロンゲex",
+      "type": "悪 {D}"
+    },
+    {
+      "rank": 8,
+      "team": "LiamK",
+      "score": 1133.3,
+      "archetype": "マリィのオーロンゲex",
+      "type": "悪 {D}"
+    },
+    {
+      "rank": 9,
+      "team": "lolzpo+emonga",
+      "score": 1128.2,
+      "archetype": "ノココッチ/メガミミロップex",
+      "type": "無色 {C}"
+    },
+    {
+      "rank": 10,
+      "team": "Iliamna",
+      "score": 1127.7,
+      "archetype": "バチンキー/カミッチュ",
+      "type": "草 {G}"
+    }
+  ],
+  "_provenance": {
+    "fetched_from": "https://ptcg-meta.vercel.app",
+    "tool": "tools/deck_update.py --fetch"
+  }
+}

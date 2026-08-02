@@ -1,0 +1,12 @@
+BENCH: mcts (A) vs mcts (B), n=16, seed=2284111 config_a={'max_root_actions': 6, 'max_tree_depth': 1, 'rollout_turns': 100, 'rollout_depth': 200, 'n_worlds': 4, 'time_budget_s': 0.8, 'deviate_margin': 0.1, 'eval_weights': {'deck_low': -0.2, 'deck_low_at': 14, 'deck_low_prize_gate': 3}} config_b={'max_root_actions': 6, 'max_tree_depth': 1, 'rollout_turns': 100, 'rollout_depth': 200, 'n_worlds': 4, 'time_budget_s': 0.8, 'deviate_margin': 0.1, 'eval_weights': {'deck_low': -0.2, 'deck_low_at': 14, 'deck_low_prize_gate': 3}}
+
+RESULT: mcts vs mcts (n=16)
+  A wins 7  B wins 9  draws 0  unfinished 0
+  win rate A (excl. draws): 0.4375  Wilson95 [0.2310, 0.6682]
+  win rate A (draws=0.5)  : 0.4375
+  engine rejects: 0  agent exceptions: 0  fallbacks: A=0 B=0
+  budget violations: A=0 B=0  planner fallbacks: A=0 B=0  degraded: A=0 B=0
+  time/match: mean 21440.54 ms  median 19006.74 ms  max 50864.03 ms  total 343.0 s
+  time/decision: mean 532.785 ms  max 598.400 ms  decisions/match mean 39.4
+
+wrote eval/results/sot2284/confirm_kyo3_s2284111.json

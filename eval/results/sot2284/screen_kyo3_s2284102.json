@@ -1,0 +1,68 @@
+{
+  "agent_a": "mcts",
+  "agent_b": "mcts",
+  "n_matches": 16,
+  "seed": 2284102,
+  "deck": "decks/candidates_sot2284/A_kyogre3.csv",
+  "deck_b": "deck.csv",
+  "config_a": {
+    "max_root_actions": 6,
+    "max_tree_depth": 1,
+    "rollout_turns": 100,
+    "rollout_depth": 200,
+    "n_worlds": 4,
+    "time_budget_s": 0.8,
+    "deviate_margin": 0.1,
+    "eval_weights": {
+      "deck_low": -0.2,
+      "deck_low_at": 14,
+      "deck_low_prize_gate": 3
+    }
+  },
+  "config_b": {
+    "max_root_actions": 6,
+    "max_tree_depth": 1,
+    "rollout_turns": 100,
+    "rollout_depth": 200,
+    "n_worlds": 4,
+    "time_budget_s": 0.8,
+    "deviate_margin": 0.1,
+    "eval_weights": {
+      "deck_low": -0.2,
+      "deck_low_at": 14,
+      "deck_low_prize_gate": 3
+    }
+  },
+  "wins_a": 11,
+  "wins_b": 5,
+  "draws": 0,
+  "unfinished": 0,
+  "rejects": 0,
+  "exceptions": 0,
+  "fallbacks_a": 0,
+  "fallbacks_b": 0,
+  "decisions": 525,
+  "budget_violations_a": 0,
+  "budget_violations_b": 0,
+  "planner_fallbacks_a": 0,
+  "planner_fallbacks_b": 0,
+  "degraded_a": 0,
+  "degraded_b": 0,
+  "winrate_a_excl_draws": 0.6875,
+  "wilson95_excl_draws": [
+    0.4440393186673406,
+    0.8583556494803894
+  ],
+  "winrate_a_draws_half": 0.6875,
+  "time_per_match_sec": {
+    "mean": 17.81271013825244,
+    "median": 14.909472240018658,
+    "max": 31.38008816499496,
+    "total": 285.00336221203906
+  },
+  "time_per_decision_ms": {
+    "mean": 534.7369296581122,
+    "max": 591.7059022439189
+  },
+  "decisions_per_match_mean": 32.8125
+}
