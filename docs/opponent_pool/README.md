@@ -2,6 +2,11 @@
 
 Parent: SOT-1936 (Kaggle 順位向上サイクル第1次) · baseline: SOT-1938.
 
+> **Follow-up:** [SOT-2282 field-representative re-diagnosis](SOT-2282_diagnosis.md) hardens this pool
+> with a *searching* `mcts` adversary (@0.8 s) and the current-2026-08 meta decks, and re-checks the
+> champion for true weak cells. Result: no confirmed losing cell — **no oracle drift**; the cycle-1–7
+> local saturation is real (records: `screen_sot2282.jsonl`, analyzer `eval/_sot2282_analyze.py`).
+
 ## Question
 
 Is the claude/fable champion (`mcts` under `main.FABLE_CONFIG`) **overfit** to the single

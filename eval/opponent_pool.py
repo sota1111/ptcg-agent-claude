@@ -50,9 +50,20 @@ from main import FABLE_CONFIG  # noqa: E402
 
 CANDIDATES = "decks/candidates"
 
+# A *searching* opponent config (SOT-2282). The SOT-1940 pool measured the
+# champion only against non-searching policies (greedy/rule/tactical/random);
+# the strongest cell was 竹式 rule at 0.60. To make the gauntlet
+# FIELD-REPRESENTATIVE — the real Kaggle field runs agents that *search*, not
+# single-ply greedy pilots — the mcts cells below hand the opponent the
+# champion's own full-strength config (real 0.8s budget) so the champion is
+# measured against a genuine searching adversary, mirror- and cross-deck.
+MCTS_OPP_CONFIG = dict(FABLE_CONFIG)
+
 # Ordered pool. deck=None means the opponent mirrors the champion deck.csv.
+# opp_config (optional) is passed to the opponent (agent B) constructor — used
+# to give an mcts opponent the champion-strength searching budget (SOT-2282).
 POOL = [
-    # tactics axis — mirror deck, varied policy
+    # --- tactics axis — mirror deck, varied policy (SOT-1940 anchors) ---
     {"id": "t_greedy",    "axis": "tactics", "agent": "greedy",
      "deck": None, "note": "baseline anchor (SOT-1938 reference)"},
     {"id": "t_rule",      "axis": "tactics", "agent": "rule",
@@ -61,7 +72,12 @@ POOL = [
      "deck": None, "note": "take-tactics greedy"},
     {"id": "t_random",    "axis": "tactics", "agent": "random",
      "deck": None, "note": "floor sanity"},
-    # deck axis — greedy opponent, different archetype
+    # SOT-2282: a SEARCHING mirror opponent — the field-representative anchor
+    # the SOT-1940 pool lacked (all its cells were non-searching policies).
+    {"id": "t_mcts",      "axis": "tactics", "agent": "mcts",
+     "deck": None, "opp_config": MCTS_OPP_CONFIG,
+     "note": "mcts mirror @0.8s (searching adversary, SOT-2282)"},
+    # --- deck axis — SOT-1940 continuity (greedy opponent) ---
     {"id": "d_dragapult",     "axis": "deck", "agent": "greedy",
      "deck": f"{CANDIDATES}/01_dragapult.csv", "note": "dragapult"},
     {"id": "d_raging_bolt",   "axis": "deck", "agent": "greedy",
@@ -73,8 +89,44 @@ POOL = [
     {"id": "d_dragapult_naic", "axis": "deck", "agent": "greedy",
      "deck": f"{CANDIDATES}/22_dragapult_ex_naic_2nd.csv",
      "note": "dragapult ex (NAIC 2nd)"},
+    # --- SOT-2282: current-meta (2026-07-27 meta_active) archetypes, both a
+    # non-searching (greedy) and a searching (mcts) opponent on the same deck,
+    # so the policy-strength delta on each meta deck is directly measurable.
+    # dg_* = greedy pilot, dm_* = mcts pilot @0.8s. Meta ranks per manifest.
+    {"id": "dg_grimmsnarl", "axis": "deck", "agent": "greedy",
+     "deck": f"{CANDIDATES}/15_marnie_s_grimmsnarl_ex.csv",
+     "note": "Marnie's Grimmsnarl ex (meta #1) · greedy"},
+    {"id": "dm_grimmsnarl", "axis": "deck", "agent": "mcts",
+     "deck": f"{CANDIDATES}/15_marnie_s_grimmsnarl_ex.csv",
+     "opp_config": MCTS_OPP_CONFIG,
+     "note": "Marnie's Grimmsnarl ex (meta #1) · mcts @0.8s"},
+    {"id": "dg_alakazam", "axis": "deck", "agent": "greedy",
+     "deck": f"{CANDIDATES}/12_alakazam_dudunsparce.csv",
+     "note": "Alakazam Dudunsparce フーディン (meta #2) · greedy"},
+    {"id": "dm_alakazam", "axis": "deck", "agent": "mcts",
+     "deck": f"{CANDIDATES}/12_alakazam_dudunsparce.csv",
+     "opp_config": MCTS_OPP_CONFIG,
+     "note": "Alakazam Dudunsparce フーディン (meta #2) · mcts @0.8s"},
+    {"id": "dm_garchomp", "axis": "deck", "agent": "mcts",
+     "deck": f"{CANDIDATES}/20_cynthia_s_garchomp_ex.csv",
+     "opp_config": MCTS_OPP_CONFIG,
+     "note": "Cynthia's Garchomp ex (meta #3) · mcts @0.8s"},
+    {"id": "dm_raging_bolt", "axis": "deck", "agent": "mcts",
+     "deck": f"{CANDIDATES}/02_raging_bolt_ogerpon.csv",
+     "opp_config": MCTS_OPP_CONFIG,
+     "note": "Raging Bolt Ogerpon タケルライコ (meta #4) · mcts @0.8s"},
 ]
 POOL_BY_ID = {c["id"]: c for c in POOL}
+
+# Named cell groups for convenient reproduction (used by --cells).
+CELL_GROUPS = {
+    "all": [c["id"] for c in POOL],
+    "sot1940": ["t_greedy", "t_rule", "t_tactical", "t_random",
+                "d_dragapult", "d_raging_bolt", "d_lillie_champ",
+                "d_dragapult_naic"],
+    "sot2282": ["t_mcts", "dg_grimmsnarl", "dm_grimmsnarl", "dg_alakazam",
+                "dm_alakazam", "dm_garchomp", "dm_raging_bolt"],
+}
 
 
 def wilson95(wins: int, n: int) -> list:
@@ -98,7 +150,8 @@ def resolve_champion(override_json):
 def run_cell(cell, seed, n, champion_config, champion_label):
     """One (cell, seed) shard: champion mcts (A) vs the cell's opponent (B)."""
     rep = run_bench("mcts", cell["agent"], n, seed, "deck.csv",
-                    config_a=champion_config, deck_b_path=cell["deck"])
+                    config_a=champion_config, config_b=cell.get("opp_config"),
+                    deck_b_path=cell["deck"])
     faults = (rep["rejects"] + rep["exceptions"]
               + rep["fallbacks_a"] + rep["fallbacks_b"]
               + rep["budget_violations_a"] + rep["budget_violations_b"]
@@ -109,6 +162,7 @@ def run_cell(cell, seed, n, champion_config, champion_label):
         "cell": cell["id"], "axis": cell["axis"],
         "opp_agent": cell["agent"], "opp_deck": cell["deck"] or "deck.csv",
         "champion_label": champion_label, "champion_config": champion_config,
+        "opp_config": cell.get("opp_config") or {},
         "seed": seed, "n": n,
         "wins_champ": rep["wins_a"], "wins_opp": rep["wins_b"],
         "draws": rep["draws"],
@@ -119,8 +173,8 @@ def run_cell(cell, seed, n, champion_config, champion_label):
 
 
 def cmd_run(args):
-    if args.cells == "all":
-        cell_ids = [c["id"] for c in POOL]
+    if args.cells in CELL_GROUPS:
+        cell_ids = list(CELL_GROUPS[args.cells])
     else:
         cell_ids = [c.strip() for c in args.cells.split(",") if c.strip()]
     for cid in cell_ids:
@@ -252,7 +306,8 @@ def main():
 
     r = sub.add_parser("run", help="measure champion vs pool cells")
     r.add_argument("--cells", default="all",
-                   help="'all' or comma-separated cell ids")
+                   help="group name (all|sot1940|sot2282) or comma-separated "
+                        "cell ids")
     r.add_argument("--n", type=int, default=20, help="matches per (cell,seed)")
     r.add_argument("--seeds", required=True, help="comma-separated seeds")
     r.add_argument("--champion-label", default="baseline",
