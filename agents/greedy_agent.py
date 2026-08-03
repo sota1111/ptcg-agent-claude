@@ -120,7 +120,10 @@ class GreedyAgent(BaseAgent):
                  bench_boost: float = 0.0, bench_floor: int = 0,
                  survival_bench_boost: float = 0.0,
                  survival_bench_floor: int = 0,
-                 survival_hp_frac: float = 0.0):
+                 survival_hp_frac: float = 0.0,
+                 wipe_retreat_bias: float = 0.0,
+                 wipe_overcommit_penalty: float = 0.0,
+                 active_vulnerable_hp_frac: float = 0.0):
         super().__init__(seed, deck)
         self._card_index = card_index
         # Early-bench development boost (SOT-1941, opt-in — both 0 => champion
@@ -147,6 +150,24 @@ class GreedyAgent(BaseAgent):
         self._survival_bench_boost = float(survival_bench_boost)
         self._survival_bench_floor = int(survival_bench_floor)
         self._survival_hp_frac = float(survival_hp_frac)
+        # Wipe-risk conservative retreat / anti-overcommit search behaviour
+        # (SOT-2366, opt-in — both biases 0 => champion byte-identical). Targets
+        # the `doomed_active_overcommit` board_wipe cause the ELO gauntlet
+        # localized (SOT-2365): the champion keeps sinking resources (energy /
+        # evolution / attach) into an Active that is already doomed (near-KO and
+        # the opponent can KO it next turn) instead of retreating to preserve the
+        # board. When a wipe is imminent this lever (a) RAISES the retreat option
+        # priority by `wipe_retreat_bias` (only when a genuinely survivable bench
+        # target exists), and (b) LOWERS the priority of resource-injection
+        # options that target the doomed Active (attach-to-active / evolve-of-
+        # active) by `wipe_overcommit_penalty`. Distinct from the rejected SOT-
+        # 2367 survival-bench (which biased WHEN to PLAY a bench basic, not
+        # retreat/overcommit) and from SOT-1941/2335 — a conditional action-side
+        # lever, not an eval bonus. All scoring is additive and short-circuits to
+        # zero when the biases are unset, so the champion path is untouched.
+        self._wipe_retreat_bias = float(wipe_retreat_bias)
+        self._wipe_overcommit_penalty = float(wipe_overcommit_penalty)
+        self._active_vulnerable_hp_frac = float(active_vulnerable_hp_frac)
 
     @property
     def cards(self):
@@ -197,16 +218,19 @@ class GreedyAgent(BaseAgent):
         if t == _OT_ABILITY:
             return 60.0
         if t == _OT_EVOLVE:
-            return 70.0 + 0.2 * self._card_value(
+            return (70.0 + 0.2 * self._card_value(
                 self._resolve_card_id(view, raw.get("area"), raw.get("index"),
                                        raw.get("playerIndex", view.your_index)))
+                    - self._wipe_overcommit_value(
+                        view, raw.get("area") == _AREA_ACTIVE))
         if t == _OT_PLAY:
             return self._play_score(view, raw.get("index"))
         if t == _OT_ATTACH:
             bonus = 10.0 if raw.get("inPlayArea") == _AREA_ACTIVE else 0.0
-            return 45.0 + bonus
+            return 45.0 + bonus - self._wipe_overcommit_value(
+                view, raw.get("inPlayArea") == _AREA_ACTIVE)
         if t == _OT_RETREAT:
-            return 4.0
+            return 4.0 + self._wipe_retreat_bonus(view)
         if t == _OT_END:
             return 0.0
         if t == _OT_YES:
@@ -290,6 +314,82 @@ class GreedyAgent(BaseAgent):
             return False
         hp = getattr(pokemon, "hp", 0) or 0
         return (hp / max_hp) <= self._survival_hp_frac
+
+    # ---- SOT-2366 wipe-risk retreat / anti-overcommit --------------------
+
+    def _active_doomed(self, view: View) -> bool:
+        """True when the ROOT player's Active is doomed: it is near-KO (current
+        HP at or below `active_vulnerable_hp_frac` of max) AND the opponent's
+        Active can Knock it Out next turn (estimated best-attack damage, with
+        weakness/resistance, at least its current HP). No Active, missing/zero
+        max HP, or no opposing threat => not doomed (no data => no bias),
+        never raising."""
+        active = view.me.active or ()
+        me = active[0] if active else None
+        if me is None:
+            return False
+        max_hp = getattr(me, "max_hp", 0) or 0
+        hp = getattr(me, "hp", 0) or 0
+        if max_hp <= 0 or hp <= 0:
+            return False
+        if (hp / max_hp) > self._active_vulnerable_hp_frac:
+            return False
+        return self._incoming_ko_threat(view, me, hp)
+
+    def _incoming_ko_threat(self, view: View, me, hp: int) -> bool:
+        """Estimate whether the opponent's Active can KO our Active `me` (with
+        current HP `hp`) next turn: its best attack damage, doubled on our
+        weakness / reduced 30 on our resistance, reaches `hp`. Absent opponent
+        Active => no threat."""
+        opp = view.opp.active or ()
+        attacker = opp[0] if opp else None
+        if attacker is None:
+            return False
+        atk = self.cards.card(attacker.card_id)
+        defender = self.cards.card(me.card_id)
+        damage = float(atk.max_attack_damage)
+        if defender.weakness is not None and defender.weakness == atk.energy_type:
+            damage *= 2
+        elif defender.resistance is not None and defender.resistance == atk.energy_type:
+            damage = max(0.0, damage - 30.0)
+        return damage >= hp
+
+    def _has_survivable_retreat_target(self, view: View) -> bool:
+        """A retreat is worthwhile only if a benched Pokémon can be promoted
+        that is NOT itself near-KO (HP fraction strictly above the vulnerable
+        threshold), i.e. it genuinely survives the incoming attack rather than
+        moving the doom by one Pokémon."""
+        for pk in view.me.bench or ():
+            if pk is None:
+                continue
+            max_hp = getattr(pk, "max_hp", 0) or 0
+            hp = getattr(pk, "hp", 0) or 0
+            if max_hp > 0 and (hp / max_hp) > self._active_vulnerable_hp_frac:
+                return True
+        return False
+
+    def _wipe_retreat_bonus(self, view: View) -> float:
+        """Additive retreat-priority bonus when the Active is doomed and a
+        survivable bench target exists. Zero (champion path) unless
+        `wipe_retreat_bias` is set."""
+        if self._wipe_retreat_bias == 0.0:
+            return 0.0
+        if not self._active_doomed(view):
+            return 0.0
+        if not self._has_survivable_retreat_target(view):
+            return 0.0
+        return self._wipe_retreat_bias
+
+    def _wipe_overcommit_value(self, view: View, target_is_active: bool) -> float:
+        """Additive penalty (subtracted by the caller) for sinking resources
+        (attach / evolve) into the doomed Active. Zero (champion path) unless
+        `wipe_overcommit_penalty` is set and the option targets a doomed
+        Active."""
+        if self._wipe_overcommit_penalty == 0.0 or not target_is_active:
+            return 0.0
+        if not self._active_doomed(view):
+            return 0.0
+        return self._wipe_overcommit_penalty
 
     def _card_target_score(self, view: View, raw: dict) -> float:
         context = view.select.context
