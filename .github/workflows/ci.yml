@@ -23,6 +23,7 @@ jobs:
           python -m unittest -v \
             tests.test_deck_pool_meta \
             tests.test_early_bench \
+            tests.test_elo_gauntlet \
             tests.test_mcts \
             tests.test_policy_net \
             tests.test_rule_policy \
