@@ -14,7 +14,19 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 
 from eval.elo_gauntlet import (decompose, elo_expected, solve_rating,
-                               _parse_eval_weights_override, DEFAULT_K)
+                               _parse_eval_weights_override, DEFAULT_K,
+                               build_field, compute_compare, ATTACK_LEVER)
+
+
+def _recs(seeds, cells):
+    """Expand {cell: (wins, losses, tier, anchor)} into per-seed JSONL recs."""
+    out = []
+    for s in seeds:
+        for cell, (w, l, tier, anchor) in cells.items():
+            out.append({"seed": s, "cell": cell, "tier": tier,
+                        "anchor": anchor, "opp_agent": "mcts",
+                        "wins": w, "losses": l, "draws": 0, "loss_by_tag": {}})
+    return out
 
 
 class TestEloExpected(unittest.TestCase):
@@ -103,6 +115,74 @@ class TestChampionEvalWeightsOverride(unittest.TestCase):
     def test_rejects_bad_json(self):
         with self.assertRaises(SystemExit):
             _parse_eval_weights_override("{not json}")
+
+
+class TestEliteField(unittest.TestCase):
+    def test_elite_cell_added_by_default(self):
+        field = build_field(0.1)
+        ids = [c["id"] for c in field]
+        self.assertIn("mcts_elite", ids)
+        elite = next(c for c in field if c["id"] == "mcts_elite")
+        self.assertEqual(elite["tier"], "elite")
+        # anchor above the peer mirror => a strong (rating-earning) tier
+        peer = next(c for c in field if c["id"] == "mcts_peer")
+        self.assertGreater(elite["anchor"], peer["anchor"])
+        # deeper search than the champion budget
+        self.assertGreater(elite["opp_config"]["time_budget_s"], 0.1)
+
+    def test_no_elite_reproduces_sot2334_field(self):
+        self.assertNotIn(
+            "mcts_elite",
+            [c["id"] for c in build_field(0.1, include_elite=False)])
+
+
+class TestAttackLeverCompare(unittest.TestCase):
+    def _base(self):
+        # champion ~parity peer, loses some to elite/strong, clean weak tiers
+        return {
+            "random": (18, 2, "weak", 1000.0),
+            "rule": (14, 6, "weak", 1230.0),
+            "greedy": (13, 7, "mid", 1330.0),
+            "mcts_peer": (10, 10, "peer", 1560.0),
+            "mcts_high": (7, 13, "strong", 1660.0),
+            "mcts_elite": (5, 15, "elite", 1760.0),
+        }
+
+    def test_promote_when_strong_up_and_weak_held(self):
+        base = _recs([1, 2, 3], self._base())
+        var_cells = dict(self._base())
+        # lever converts strong/elite upset wins, weak tiers unchanged
+        var_cells["mcts_high"] = (12, 8, "strong", 1660.0)
+        var_cells["mcts_elite"] = (10, 10, "elite", 1760.0)
+        var = _recs([1, 2, 3], var_cells)
+        res = compute_compare(base, var)
+        self.assertGreater(res["r_star_gain"], 0)
+        self.assertTrue(res["all_seeds_up"])
+        self.assertTrue(res["no_regression"])
+        self.assertEqual(res["verdict"], "PROMOTE")
+
+    def test_non_promote_when_weak_tier_regresses(self):
+        base = _recs([1, 2, 3], self._base())
+        var_cells = dict(self._base())
+        # small strong-tier gain but the lever bleeds NEW weak-tier upsets
+        var_cells["mcts_high"] = (9, 11, "strong", 1660.0)
+        var_cells["rule"] = (7, 13, "weak", 1230.0)
+        var_cells["greedy"] = (7, 13, "mid", 1330.0)
+        var = _recs([1, 2, 3], var_cells)
+        res = compute_compare(base, var)
+        self.assertFalse(res["no_regression"])
+        self.assertEqual(res["verdict"], "NON-PROMOTE")
+
+    def test_non_promote_when_flat(self):
+        base = _recs([1, 2, 3], self._base())
+        var = _recs([1, 2, 3], self._base())
+        res = compute_compare(base, var)
+        self.assertEqual(res["verdict"], "NON-PROMOTE")
+
+    def test_attack_lever_lowers_deviate_margin(self):
+        # the lever is a decision-commitment diff, not compute/eval
+        self.assertIn("deviate_margin", ATTACK_LEVER)
+        self.assertLess(ATTACK_LEVER["deviate_margin"], 0.1)
 
 
 if __name__ == "__main__":

@@ -102,16 +102,30 @@ REASON_TAG = {
 # policies). The weak/mid tiers sit BELOW where the champion converges, so any
 # loss to them is by definition an ELO "upset loss" (the case that drains
 # rating). The peer tier is a same-budget mcts mirror -> ~0.50 win rate.
-def build_field(champion_budget: float):
+def build_field(champion_budget: float, include_elite: bool = True,
+                elite_mult: float = 6.0):
+    """The weak->strong anchored opponent field.
+
+    ``include_elite`` (SOT-2336, the *attack* lever) appends a genuinely
+    strong ``mcts_elite`` reference above the peer mirror — an external-class
+    proxy (same search agent given ``elite_mult`` x the champion's per-move
+    budget, so it explores far more deeply). Its anchor sits well above where
+    the champion converges, so it is a *strong* (non-upset) tier: the place
+    where beating the opponent EARNS the most rating (upset win, ``K*(1-E)``
+    with E small). This is the cell the attack lever must convert. It is
+    ADDITIVE — omitting it (``include_elite=False``) reproduces the exact
+    SOT-2334 diagnostic field.
+    """
     peer_budget = champion_budget
     near_budget = round(champion_budget / 2.0, 4)
     strong_budget = round(champion_budget * 2.5, 4)
+    elite_budget = round(champion_budget * elite_mult, 4)
     mcts_cfg = dict(FABLE_CONFIG)
 
     def mcts_at(budget):
         return {**mcts_cfg, "time_budget_s": budget}
 
-    return [
+    field = [
         {"id": "random",    "tier": "weak", "agent": "random",
          "anchor": 1000.0, "opp_config": None,
          "note": "random legal (floor)"},
@@ -134,9 +148,33 @@ def build_field(champion_budget: float):
          "anchor": 1660.0, "opp_config": mcts_at(strong_budget),
          "note": f"mcts @{strong_budget}s (stronger search)"},
     ]
+    if include_elite:
+        field.append(
+            {"id": "mcts_elite", "tier": "elite", "agent": "mcts",
+             "anchor": 1760.0, "opp_config": mcts_at(elite_budget),
+             "note": f"mcts @{elite_budget}s ({elite_mult}x deep search, "
+                     f"external-class reference)"})
+    return field
 
 
-TIER_ORDER = ["weak", "mid", "near_peer", "peer", "strong"]
+# --- SOT-2336 attack lever: champion *decision-commitment* diff ---------------
+# The champion's ``deviate_margin=0.1`` (main.py FABLE_CONFIG) is the SOT-1672
+# conservatism band: MCTS must beat the 1-ply greedy-prior action by >0.1 on the
+# evaluator's value scale before the champion will *leave* the prior action.
+# HYPOTHESIS (attack): that band was tuned to suppress MCTS *noise* against the
+# OLD field. Against a genuinely strong opponent the greedy prior's static read
+# is itself more often wrong (strong search punishes shallow lines), so the band
+# over-suppresses exactly the MCTS-discovered lines that would BEAT strong
+# search — capping upset-win rating gain. Lowering the band trusts the deeper
+# read more. This is a QUALITATIVE change to *which action the champion commits
+# to*, orthogonal to the closed axes: value-net leaf eval (SOT-1837/2283,
+# rejected) and belief width n_worlds (SOT-2172, rejected) and raw compute. The
+# ELO-proxy R* is the judge: it nets the strong-tier acquisition against any new
+# weak-tier upset-loss leak automatically.
+ATTACK_LEVER = {"deviate_margin": 0.02}
+
+
+TIER_ORDER = ["weak", "mid", "near_peer", "peer", "strong", "elite"]
 
 DEFAULT_K = 32.0
 DEFAULT_R0 = 1500.0
@@ -243,23 +281,40 @@ def cmd_run(args):
     if len(set(seeds)) != len(seeds):
         raise SystemExit(f"seeds must be distinct, got {seeds}")
     # The opponent field (build_field) stays pinned to the BASELINE champion
-    # (FABLE_CONFIG). `--champion-eval-weights` overrides ONLY the champion
-    # under test's eval_weights, so a defence/attack candidate (SOT-2335/2336)
-    # is measured against the SAME fixed reference field the baseline champion
-    # was — an isolated A/B (candidate-vs-field) rather than a moving mirror.
-    field = build_field(args.champion_budget)
-    ew_override = _parse_eval_weights_override(
-        getattr(args, "champion_eval_weights", None))
+    # (FABLE_CONFIG). The candidate overrides below change ONLY the champion
+    # under test, so a defence/attack candidate (SOT-2335/2336) is measured
+    # against the SAME fixed reference field the baseline champion was — an
+    # isolated candidate-vs-field A/B rather than a moving mirror.
+    field = build_field(args.champion_budget,
+                        include_elite=not args.no_elite,
+                        elite_mult=args.elite_mult)
     champion_config = {**dict(FABLE_CONFIG),
                        "time_budget_s": args.champion_budget}
+    # SOT-2335 defence lever: --champion-eval-weights overrides ONLY the
+    # champion-under-test's eval_weights.
+    ew_override = _parse_eval_weights_override(
+        getattr(args, "champion_eval_weights", None))
     if ew_override:
         champion_config["eval_weights"] = {
             **dict(FABLE_CONFIG.get("eval_weights") or {}), **ew_override}
+    # SOT-2336 attack lever: --champion-overrides injects an arbitrary champion
+    # diff (e.g. the lowered deviate_margin) WITHOUT touching main.py. Empty/
+    # absent keeps the shipped champion byte-identical (the baseline arm).
+    overrides = {}
+    if args.champion_overrides:
+        overrides = json.loads(args.champion_overrides)
+        if not isinstance(overrides, dict):
+            raise SystemExit("--champion-overrides must be a JSON object")
+        champion_config.update(overrides)
+    if args.attack_lever:
+        overrides = {**overrides, **ATTACK_LEVER}
+        champion_config.update(ATTACK_LEVER)
     champ_deck = load_deck(args.deck)
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
 
     print(f"ELO-GAUNTLET run: seeds={seeds} n={args.n} "
-          f"champion_budget={args.champion_budget}s K={args.k}\n"
+          f"champion_budget={args.champion_budget}s K={args.k} "
+          f"overrides={overrides or '(baseline)'}\n"
           f"  field={[c['id'] for c in field]}\n"
           f"  champion_eval_weights_override={ew_override}", flush=True)
     with open(args.out, "a") as f:
@@ -286,6 +341,7 @@ def cmd_run(args):
                     "opp_config": cell.get("opp_config") or {},
                     "champion_budget": args.champion_budget,
                     "champion_eval_weights_override": ew_override or {},
+                    "champion_overrides": overrides,
                     "n": len(rows), "faults": faults,
                     "wins": wins, "losses": losses, "draws": draws,
                     "loss_by_tag": loss_tags,
@@ -502,6 +558,107 @@ def cmd_summary(args):
     return verdict
 
 
+# --- SOT-2336 attack-lever A/B comparison -----------------------------------
+# Acquisition tiers = where beating the opponent EARNS rating (peer & up). The
+# attack lever must lift these WITHOUT regressing the upset (weak) tiers.
+ACQUISITION_TIERS = ("peer", "strong", "elite")
+# Tiers the champion is favoured over (upset-LOSS risk = rating leak). The
+# regression guard is on their RAW win rate — R*-independent, unlike upset_net
+# (which mechanically drops when a strong-tier gain lifts R*, since drain=K*E
+# grows with R*). "No new upset losses" == defensive win rate not falling.
+DEFENSIVE_TIERS = ("weak", "mid", "near_peer")
+RSTAR_MARGIN = 5.0       # min pooled R* gain to call an improvement (ELO pts)
+DEFENSE_WR_TOL = 0.03    # allowed defensive-tier win-rate slip before regression
+
+
+def _tier_wr(cells, tiers):
+    tiers = set(tiers)
+    w = sum(c["wins"] for c in cells if c["tier"] in tiers)
+    d = w + sum(c["losses"] for c in cells if c["tier"] in tiers)
+    return (w / d) if d else None
+
+
+def compute_compare(base_recs, variant_recs, k=DEFAULT_K):
+    """Pure A/B judge for the attack lever (SOT-2336).
+
+    Returns a dict with pooled/per-seed R* for both arms, acquisition-tier win
+    rate, upset-tier NET (each at its own arm's R*), and a PROMOTE/NON-PROMOTE
+    verdict. Promotion requires (1) pooled R* gain >= RSTAR_MARGIN, (2) R* gain
+    on EVERY shared seed (confirm-stable), and (3) no defensive-tier win-rate
+    regression beyond DEFENSE_WR_TOL (the lever must not buy strong-tier wins by
+    leaking new weak-tier upset losses). Win-rate is orthogonal (SOT-2334) so R*
+    is the primary acquisition signal; the defensive win rate is the guard.
+    """
+    def arm(recs):
+        pooled = _agg_by_cell(recs)
+        r_star = solve_rating(pooled, k=k)
+        dec = decompose(pooled, r_star, k=k)
+        upset_net = sum(d["net"] for d in dec if d["is_upset_tier"])
+        seeds = sorted({r["seed"] for r in recs})
+        per_seed = {}
+        for s in seeds:
+            pc = _agg_by_cell([r for r in recs if r["seed"] == s])
+            per_seed[s] = solve_rating(pc, k=k)
+        return {
+            "r_star": r_star, "per_seed_r_star": per_seed,
+            "upset_net": upset_net,
+            "acq_wr": _tier_wr(pooled, ACQUISITION_TIERS),
+            "elite_wr": _tier_wr(pooled, ("elite",)),
+            "strong_wr": _tier_wr(pooled, ("strong",)),
+            "defensive_wr": _tier_wr(pooled, DEFENSIVE_TIERS),
+            "cells": dec, "seeds": seeds,
+        }
+
+    base = arm(base_recs)
+    var = arm(variant_recs)
+    r_star_gain = var["r_star"] - base["r_star"]
+    shared = [s for s in var["per_seed_r_star"] if s in base["per_seed_r_star"]]
+    per_seed_gain = {s: var["per_seed_r_star"][s] - base["per_seed_r_star"][s]
+                     for s in shared}
+    all_seeds_up = bool(shared) and all(g > 0 for g in per_seed_gain.values())
+    def_delta = ((var["defensive_wr"] or 0.0) - (base["defensive_wr"] or 0.0))
+    no_regression = def_delta >= -DEFENSE_WR_TOL
+    promote = (r_star_gain >= RSTAR_MARGIN and all_seeds_up and no_regression)
+    return {
+        "base": base, "variant": var,
+        "r_star_gain": r_star_gain, "per_seed_gain": per_seed_gain,
+        "all_seeds_up": all_seeds_up,
+        "defensive_wr_delta": def_delta, "upset_delta": var["upset_net"] - base["upset_net"],
+        "no_regression": no_regression,
+        "verdict": "PROMOTE" if promote else "NON-PROMOTE",
+    }
+
+
+def cmd_compare(args):
+    base_recs = _read([args.base])
+    var_recs = _read([args.variant])
+    if not base_recs or not var_recs:
+        raise SystemExit("both --base and --variant must have records")
+    res = compute_compare(base_recs, var_recs, k=args.k)
+    b, v = res["base"], res["variant"]
+    print(f"\n=== ATTACK-LEVER A/B (SOT-2336, K={args.k}) ===")
+    print(f"  base    R*={b['r_star']:.1f}  acq_wr={_fmt(b['acq_wr'])}  "
+          f"strong_wr={_fmt(b['strong_wr'])}  elite_wr={_fmt(b['elite_wr'])}  "
+          f"def_wr={_fmt(b['defensive_wr'])}")
+    print(f"  variant R*={v['r_star']:.1f}  acq_wr={_fmt(v['acq_wr'])}  "
+          f"strong_wr={_fmt(v['strong_wr'])}  elite_wr={_fmt(v['elite_wr'])}  "
+          f"def_wr={_fmt(v['defensive_wr'])}")
+    print(f"  R* gain: {res['r_star_gain']:+.1f} "
+          f"(need >= {RSTAR_MARGIN:+.1f})")
+    print(f"  per-seed R* gain: "
+          f"{ {s: round(g, 1) for s, g in res['per_seed_gain'].items()} } "
+          f"-> all seeds up: {res['all_seeds_up']}")
+    print(f"  defensive-tier wr delta: {res['defensive_wr_delta']:+.3f} "
+          f"(regression if < {-DEFENSE_WR_TOL:+.3f}) -> "
+          f"no_regression: {res['no_regression']}")
+    print(f"\n  VERDICT: {res['verdict']}")
+    return res
+
+
+def _fmt(x):
+    return f"{x:.3f}" if x is not None else " n/a"
+
+
 def main():
     p = argparse.ArgumentParser(
         description=__doc__,
@@ -525,12 +682,30 @@ def main():
                         "candidate against the fixed reference field.")
     r.add_argument("--deck", default="deck.csv")
     r.add_argument("--out", default="docs/elo_gauntlet/pool.jsonl")
+    r.add_argument("--no-elite", action="store_true",
+                   help="omit the SOT-2336 mcts_elite strong cell "
+                        "(reproduces the SOT-2334 diagnostic field)")
+    r.add_argument("--elite-mult", type=float, default=6.0,
+                   help="mcts_elite per-move budget as a multiple of the "
+                        "champion budget (SOT-2336 external-class reference)")
+    r.add_argument("--champion-overrides", default="",
+                   help="JSON object merged onto the champion config for an "
+                        "A/B arm, e.g. '{\"deviate_margin\": 0.02}'")
+    r.add_argument("--attack-lever", action="store_true",
+                   help="apply the SOT-2336 ATTACK_LEVER champion diff "
+                        "(shorthand for the recorded --champion-overrides)")
     r.set_defaults(func=cmd_run)
 
     s = sub.add_parser("summary", help="verdict + per-tier decomposition")
     s.add_argument("paths", nargs="+", help="one or more gauntlet JSONL files")
     s.add_argument("--k", type=float, default=DEFAULT_K)
     s.set_defaults(func=cmd_summary)
+
+    c = sub.add_parser("compare", help="attack-lever A/B verdict (SOT-2336)")
+    c.add_argument("--base", required=True, help="baseline-arm JSONL")
+    c.add_argument("--variant", required=True, help="lever-arm JSONL")
+    c.add_argument("--k", type=float, default=DEFAULT_K)
+    c.set_defaults(func=cmd_compare)
 
     args = p.parse_args()
     args.func(args)
