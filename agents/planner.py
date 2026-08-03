@@ -151,6 +151,19 @@ class PlannerConfig:
     survival_bench: float = 0.0
     survival_bench_floor: int = 0
     survival_hp_frac: float = 0.0
+    # Wipe-risk conservative retreat / anti-overcommit search behaviour (SOT-
+    # 2366, opt-in — both biases 0 => champion byte-identical). Fed into the
+    # shared GreedyAgent that serves the root prior and rollout policy. When the
+    # root player's Active is doomed (current HP <= `active_vulnerable_hp_frac`
+    # of max AND the opponent's Active can KO it next turn), it RAISES the
+    # retreat option priority by `wipe_retreat_bias` (only if a survivable bench
+    # target exists) and LOWERS attach-to-active / evolve-of-active priority by
+    # `wipe_overcommit_penalty`. Targets the SOT-2365 `doomed_active_overcommit`
+    # board_wipe cause; a search/action lever, not an eval bonus (SOT-2335) nor
+    # a bench-play bias (SOT-2367). See agents/greedy_agent.GreedyAgent.
+    wipe_retreat_bias: float = 0.0
+    wipe_overcommit_penalty: float = 0.0
+    active_vulnerable_hp_frac: float = 0.0
     # Self-play recording hook (train/gen_policy.py). When True the planner
     # stores the root's per-option aggregate visit counts in `last_root` after
     # each single-select decision, so the recorder can label states with the
@@ -399,7 +412,10 @@ class MctsPlanner:
             bench_floor=self.config.early_bench_floor,
             survival_bench_boost=self.config.survival_bench,
             survival_bench_floor=self.config.survival_bench_floor,
-            survival_hp_frac=self.config.survival_hp_frac)
+            survival_hp_frac=self.config.survival_hp_frac,
+            wipe_retreat_bias=self.config.wipe_retreat_bias,
+            wipe_overcommit_penalty=self.config.wipe_overcommit_penalty,
+            active_vulnerable_hp_frac=self.config.active_vulnerable_hp_frac)
         # take-tactics injection points (SOT-1892): one shared tactical
         # scorer serves whichever of prior/rollout is switched on; with both
         # OFF (champion default) these are aliases of the plain greedy.
