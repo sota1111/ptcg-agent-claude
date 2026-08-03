@@ -225,19 +225,43 @@ def run_cell(cell, champion_config, n, base_rng, champ_deck, champ_deck_path):
     return rows, faults
 
 
+def _parse_eval_weights_override(raw):
+    """Parse the --champion-eval-weights JSON object (or None)."""
+    if not raw:
+        return None
+    try:
+        override = json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise SystemExit(f"--champion-eval-weights must be JSON: {e}")
+    if not isinstance(override, dict):
+        raise SystemExit("--champion-eval-weights must be a JSON object")
+    return override
+
+
 def cmd_run(args):
     seeds = [int(s) for s in args.seeds.split(",") if s.strip()]
     if len(set(seeds)) != len(seeds):
         raise SystemExit(f"seeds must be distinct, got {seeds}")
+    # The opponent field (build_field) stays pinned to the BASELINE champion
+    # (FABLE_CONFIG). `--champion-eval-weights` overrides ONLY the champion
+    # under test's eval_weights, so a defence/attack candidate (SOT-2335/2336)
+    # is measured against the SAME fixed reference field the baseline champion
+    # was — an isolated A/B (candidate-vs-field) rather than a moving mirror.
     field = build_field(args.champion_budget)
+    ew_override = _parse_eval_weights_override(
+        getattr(args, "champion_eval_weights", None))
     champion_config = {**dict(FABLE_CONFIG),
                        "time_budget_s": args.champion_budget}
+    if ew_override:
+        champion_config["eval_weights"] = {
+            **dict(FABLE_CONFIG.get("eval_weights") or {}), **ew_override}
     champ_deck = load_deck(args.deck)
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
 
     print(f"ELO-GAUNTLET run: seeds={seeds} n={args.n} "
           f"champion_budget={args.champion_budget}s K={args.k}\n"
-          f"  field={[c['id'] for c in field]}", flush=True)
+          f"  field={[c['id'] for c in field]}\n"
+          f"  champion_eval_weights_override={ew_override}", flush=True)
     with open(args.out, "a") as f:
         for seed in seeds:
             base = Rng(seed)
@@ -261,6 +285,7 @@ def cmd_run(args):
                     "opp_agent": cell["agent"], "anchor": cell["anchor"],
                     "opp_config": cell.get("opp_config") or {},
                     "champion_budget": args.champion_budget,
+                    "champion_eval_weights_override": ew_override or {},
                     "n": len(rows), "faults": faults,
                     "wins": wins, "losses": losses, "draws": draws,
                     "loss_by_tag": loss_tags,
@@ -402,6 +427,13 @@ def cmd_summary(args):
     upset_drain = sum(d["drain_from_losses"] for d in upset)
     upset_gain = sum(d["gain_from_wins"] for d in upset)
     upset_net = sum(d["net"] for d in upset)
+    # upset敗北率: the fraction of decided upset-tier matches the champion
+    # LOST — the primary metric the SOT-2335 defence lever must cut (a lower
+    # upset-loss rate is fewer rating-draining upsets). Reported alongside NET.
+    upset_losses = sum(d["losses"] for d in upset)
+    upset_wins = sum(d["wins"] for d in upset)
+    upset_decided = upset_wins + upset_losses
+    upset_loss_rate = (upset_losses / upset_decided) if upset_decided else float("nan")
     peer_wr = (sum(p["wins"] for p in peer) /
                max(1, sum(p["wins"] + p["losses"] for p in peer)))
     peer_net = sum(p["net"] for p in peer)
@@ -419,6 +451,8 @@ def cmd_summary(args):
     print(f"\n--- rating-flow attribution (at R*={r_star_pooled:.1f}) ---")
     print(f"  upset tiers (anchor<R*): +wins {upset_gain:+.1f}  "
           f"-losses {upset_drain:+.1f}  NET {upset_net:+.1f}")
+    print(f"  upset敗北率 (upset-tier loss rate): {upset_loss_rate:.3f} "
+          f"({upset_losses}/{upset_decided} decided)")
     print(f"  peer tier: winrate {peer_wr:.3f}  NET {peer_net:+.1f}")
     print(f"  champion losses: {total_losses}  board_wipe {bw} "
           f"({bw_pct:.1f}%)  all_tags={all_loss_tags}")
@@ -483,6 +517,12 @@ def main():
                         "reduced from the shipped 0.8s for throughput")
     r.add_argument("--k", type=float, default=DEFAULT_K,
                    help="ELO K-factor (recorded; used by summary)")
+    r.add_argument("--champion-eval-weights", default=None,
+                   help="JSON object merged into the champion-under-test's "
+                        "eval_weights ONLY (the opponent field stays baseline "
+                        "FABLE_CONFIG); e.g. '{\"bench_dev\":0.5,"
+                        "\"bench_dev_cap\":2}'. Isolates a defence/attack "
+                        "candidate against the fixed reference field.")
     r.add_argument("--deck", default="deck.csv")
     r.add_argument("--out", default="docs/elo_gauntlet/pool.jsonl")
     r.set_defaults(func=cmd_run)

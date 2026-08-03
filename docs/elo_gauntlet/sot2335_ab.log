@@ -1,0 +1,155 @@
+=== BASE (champion) ===
+ELO-GAUNTLET run: seeds=[2335, 20335, 42335] n=16 champion_budget=0.12s K=32.0
+  field=['random', 'rule', 'greedy', 'tactical', 'mcts_low', 'mcts_peer', 'mcts_high']
+  champion_eval_weights_override=None
+-> seed 2335 cell random (random legal (floor)) ...
+   champ 16-0 (draw 0) wr=1.000 loss_tags={} faults=0
+-> seed 2335 cell rule (竹式 rule policy) ...
+   champ 7-9 (draw 0) wr=0.438 loss_tags={'prize_race_lost': 2, 'board_wipe': 7} faults=0
+-> seed 2335 cell greedy (1-ply greedy (SOT-1938 baseline anchor)) ...
+   champ 13-3 (draw 0) wr=0.812 loss_tags={'board_wipe': 3} faults=0
+-> seed 2335 cell tactical (take-tactics greedy) ...
+   champ 9-7 (draw 0) wr=0.562 loss_tags={'board_wipe': 7} faults=0
+-> seed 2335 cell mcts_low (mcts @0.06s (weakened search)) ...
+   champ 9-7 (draw 0) wr=0.562 loss_tags={'board_wipe': 7} faults=0
+-> seed 2335 cell mcts_peer (mcts @0.12s (same-budget mirror)) ...
+   champ 4-12 (draw 0) wr=0.250 loss_tags={'board_wipe': 12} faults=0
+-> seed 2335 cell mcts_high (mcts @0.3s (stronger search)) ...
+   champ 5-11 (draw 0) wr=0.312 loss_tags={'board_wipe': 11} faults=0
+-> seed 20335 cell random (random legal (floor)) ...
+   champ 15-1 (draw 0) wr=0.938 loss_tags={'board_wipe': 1} faults=0
+-> seed 20335 cell rule (竹式 rule policy) ...
+   champ 10-6 (draw 0) wr=0.625 loss_tags={'board_wipe': 6} faults=0
+-> seed 20335 cell greedy (1-ply greedy (SOT-1938 baseline anchor)) ...
+   champ 13-3 (draw 0) wr=0.812 loss_tags={'board_wipe': 3} faults=0
+-> seed 20335 cell tactical (take-tactics greedy) ...
+   champ 9-7 (draw 0) wr=0.562 loss_tags={'board_wipe': 7} faults=0
+-> seed 20335 cell mcts_low (mcts @0.06s (weakened search)) ...
+   champ 8-8 (draw 0) wr=0.500 loss_tags={'board_wipe': 7, 'prize_race_lost': 1} faults=0
+-> seed 20335 cell mcts_peer (mcts @0.12s (same-budget mirror)) ...
+   champ 11-5 (draw 0) wr=0.688 loss_tags={'board_wipe': 5} faults=0
+-> seed 20335 cell mcts_high (mcts @0.3s (stronger search)) ...
+   champ 6-10 (draw 0) wr=0.375 loss_tags={'board_wipe': 10} faults=0
+-> seed 42335 cell random (random legal (floor)) ...
+   champ 16-0 (draw 0) wr=1.000 loss_tags={} faults=0
+-> seed 42335 cell rule (竹式 rule policy) ...
+   champ 10-6 (draw 0) wr=0.625 loss_tags={'board_wipe': 5, 'prize_race_lost': 1} faults=0
+-> seed 42335 cell greedy (1-ply greedy (SOT-1938 baseline anchor)) ...
+   champ 10-6 (draw 0) wr=0.625 loss_tags={'board_wipe': 6} faults=0
+-> seed 42335 cell tactical (take-tactics greedy) ...
+   champ 9-7 (draw 0) wr=0.562 loss_tags={'board_wipe': 7} faults=0
+-> seed 42335 cell mcts_low (mcts @0.06s (weakened search)) ...
+   champ 9-7 (draw 0) wr=0.562 loss_tags={'board_wipe': 7} faults=0
+-> seed 42335 cell mcts_peer (mcts @0.12s (same-budget mirror)) ...
+   champ 7-9 (draw 0) wr=0.438 loss_tags={'board_wipe': 9} faults=0
+-> seed 42335 cell mcts_high (mcts @0.3s (stronger search)) ...
+   champ 9-7 (draw 0) wr=0.562 loss_tags={'board_wipe': 7} faults=0
+appended to docs/elo_gauntlet/sot2335_base.jsonl
+=== CAND (defensive lever) ===
+ELO-GAUNTLET run: seeds=[2335, 20335, 42335] n=16 champion_budget=0.12s K=32.0
+  field=['random', 'rule', 'greedy', 'tactical', 'mcts_low', 'mcts_peer', 'mcts_high']
+  champion_eval_weights_override={'bench_dev': 0.4, 'bench_dev_cap': 2, 'evo_ready': 0.2}
+-> seed 2335 cell random (random legal (floor)) ...
+   champ 16-0 (draw 0) wr=1.000 loss_tags={} faults=0
+-> seed 2335 cell rule (竹式 rule policy) ...
+   champ 7-9 (draw 0) wr=0.438 loss_tags={'board_wipe': 9} faults=0
+-> seed 2335 cell greedy (1-ply greedy (SOT-1938 baseline anchor)) ...
+   champ 12-4 (draw 0) wr=0.750 loss_tags={'board_wipe': 4} faults=0
+-> seed 2335 cell tactical (take-tactics greedy) ...
+   champ 7-9 (draw 0) wr=0.438 loss_tags={'board_wipe': 8, 'prize_race_lost': 1} faults=0
+-> seed 2335 cell mcts_low (mcts @0.06s (weakened search)) ...
+   champ 10-6 (draw 0) wr=0.625 loss_tags={'board_wipe': 6} faults=0
+-> seed 2335 cell mcts_peer (mcts @0.12s (same-budget mirror)) ...
+   champ 6-10 (draw 0) wr=0.375 loss_tags={'board_wipe': 10} faults=0
+-> seed 2335 cell mcts_high (mcts @0.3s (stronger search)) ...
+   champ 12-4 (draw 0) wr=0.750 loss_tags={'board_wipe': 4} faults=0
+-> seed 20335 cell random (random legal (floor)) ...
+   champ 16-0 (draw 0) wr=1.000 loss_tags={} faults=0
+-> seed 20335 cell rule (竹式 rule policy) ...
+   champ 11-5 (draw 0) wr=0.688 loss_tags={'board_wipe': 5} faults=0
+-> seed 20335 cell greedy (1-ply greedy (SOT-1938 baseline anchor)) ...
+   champ 10-6 (draw 0) wr=0.625 loss_tags={'board_wipe': 6} faults=0
+-> seed 20335 cell tactical (take-tactics greedy) ...
+   champ 11-5 (draw 0) wr=0.688 loss_tags={'board_wipe': 5} faults=0
+-> seed 20335 cell mcts_low (mcts @0.06s (weakened search)) ...
+   champ 8-8 (draw 0) wr=0.500 loss_tags={'board_wipe': 8} faults=0
+-> seed 20335 cell mcts_peer (mcts @0.12s (same-budget mirror)) ...
+   champ 8-8 (draw 0) wr=0.500 loss_tags={'board_wipe': 8} faults=0
+-> seed 20335 cell mcts_high (mcts @0.3s (stronger search)) ...
+   champ 10-6 (draw 0) wr=0.625 loss_tags={'board_wipe': 5, 'prize_race_lost': 1} faults=0
+-> seed 42335 cell random (random legal (floor)) ...
+   champ 14-2 (draw 0) wr=0.875 loss_tags={'board_wipe': 2} faults=0
+-> seed 42335 cell rule (竹式 rule policy) ...
+   champ 11-5 (draw 0) wr=0.688 loss_tags={'board_wipe': 5} faults=0
+-> seed 42335 cell greedy (1-ply greedy (SOT-1938 baseline anchor)) ...
+   champ 11-5 (draw 0) wr=0.688 loss_tags={'board_wipe': 5} faults=0
+-> seed 42335 cell tactical (take-tactics greedy) ...
+   champ 8-8 (draw 0) wr=0.500 loss_tags={'board_wipe': 8} faults=0
+-> seed 42335 cell mcts_low (mcts @0.06s (weakened search)) ...
+   champ 10-6 (draw 0) wr=0.625 loss_tags={'board_wipe': 6} faults=0
+-> seed 42335 cell mcts_peer (mcts @0.12s (same-budget mirror)) ...
+   champ 9-7 (draw 0) wr=0.562 loss_tags={'board_wipe': 6, 'prize_race_lost': 1} faults=0
+-> seed 42335 cell mcts_high (mcts @0.3s (stronger search)) ...
+   champ 7-9 (draw 0) wr=0.438 loss_tags={'board_wipe': 6, 'prize_race_lost': 3} faults=0
+appended to docs/elo_gauntlet/sot2335_cand.jsonl
+=== SUMMARY BASE ===
+
+=== ELO-GAUNTLET summary (K=32.0, seeds=[2335, 20335, 42335], faults=0) ===
+champion converged rating R* per seed: 2335:1438.9, 20335:1512.3, 42335:1495.7
+
+--- pooled per-cell decomposition (R*=1482.0) ---
+cell       tier        anchor    N     wr   E@R*    +wins  -losses      net up
+------------------------------------------------------------------------------
+random     weak          1000   48  0.979  0.941    +88.3    -30.1    +58.2 Y
+rule       weak          1230   48  0.562  0.810   +164.1   -544.4   -380.3 Y
+greedy     mid           1330   48  0.750  0.706   +338.9   -271.0    +67.9 Y
+tactical   mid           1380   48  0.562  0.643   +308.7   -431.9   -123.2 Y
+mcts_low   near_peer     1470   48  0.542  0.517   +401.6   -364.1    +37.5 Y
+mcts_peer  peer          1560   48  0.458  0.390   +429.7   -324.1   +105.6 .
+mcts_high  strong        1660   48  0.417  0.264   +471.0   -236.7   +234.3 .
+
+--- rating-flow attribution (at R*=1482.0) ---
+  upset tiers (anchor<R*): +wins +1301.7  -losses -1641.6  NET -339.9
+  upset敗北率 (upset-tier loss rate): 0.321 (77/240 decided)
+  peer tier: winrate 0.458  NET +105.6
+  champion losses: 131  board_wipe 127 (96.9%)  all_tags={'board_wipe': 127, 'prize_race_lost': 4}
+
+  per-seed upset-tier NET<0: {2335: True, 20335: True, 42335: True}
+
+=== VERDICT ===
+  win-rate reading: field wr=0.610, peer mirror wr=0.458 -> champion looks HEALTHY (no losing cell = 'saturated')
+  ELO reading: upset tiers NET -339.9 (drain -1641.6 from upset losses) -> LEAKING rating
+  board-wipe dominates losses: 96.9%
+  stable across 3 independent seeds: True
+  ELO/win-rate divergence: REPRODUCED
+=== SUMMARY CAND ===
+
+=== ELO-GAUNTLET summary (K=32.0, seeds=[2335, 20335, 42335], faults=0) ===
+champion converged rating R* per seed: 2335:1495.7, 20335:1529.2, 42335:1495.7
+
+--- pooled per-cell decomposition (R*=1506.8) ---
+cell       tier        anchor    N     wr   E@R*    +wins  -losses      net up
+------------------------------------------------------------------------------
+random     weak          1000   48  0.958  0.949    +75.5    -60.7    +14.8 Y
+rule       weak          1230   48  0.604  0.831   +156.8   -505.3   -348.5 Y
+greedy     mid           1330   48  0.688  0.734   +280.4   -352.5    -72.2 Y
+tactical   mid           1380   48  0.542  0.675   +270.6   -475.0   -204.4 Y
+mcts_low   near_peer     1470   48  0.583  0.553   +400.8   -353.7    +47.1 Y
+mcts_peer  peer          1560   48  0.479  0.424   +424.0   -339.2    +84.8 .
+mcts_high  strong        1660   48  0.604  0.293   +656.3   -178.0   +478.4 .
+
+--- rating-flow attribution (at R*=1506.8) ---
+  upset tiers (anchor<R*): +wins +1184.1  -losses -1747.3  NET -563.2
+  upset敗北率 (upset-tier loss rate): 0.325 (78/240 decided)
+  peer tier: winrate 0.479  NET +84.8
+  champion losses: 122  board_wipe 116 (95.1%)  all_tags={'board_wipe': 116, 'prize_race_lost': 6}
+
+  per-seed upset-tier NET<0: {2335: True, 20335: True, 42335: True}
+
+=== VERDICT ===
+  win-rate reading: field wr=0.637, peer mirror wr=0.479 -> champion looks HEALTHY (no losing cell = 'saturated')
+  ELO reading: upset tiers NET -563.2 (drain -1747.3 from upset losses) -> LEAKING rating
+  board-wipe dominates losses: 95.1%
+  stable across 3 independent seeds: True
+  ELO/win-rate divergence: REPRODUCED
+AB_DONE
