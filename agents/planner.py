@@ -140,6 +140,17 @@ class PlannerConfig:
     # serves the root prior and the rollout policy.
     early_bench: float = 0.0
     early_bench_floor: int = 0
+    # Conditional survival-bench boost (SOT-2367, opt-in — all three off =>
+    # champion byte-identical). Fed into the shared GreedyAgent that serves the
+    # root prior and rollout policy. Unlike the always-on early_bench above,
+    # this boost fires ONLY when a board wipe is imminent: bench below
+    # `survival_bench_floor` AND the Active is near-KO (HP fraction at or below
+    # `survival_hp_frac`) or absent. Targets the SOT-2365 `unpromotable`
+    # board_wipe cause (Active KO'd with an empty bench). See
+    # agents/greedy_agent.GreedyAgent._survival_bench_boost_value.
+    survival_bench: float = 0.0
+    survival_bench_floor: int = 0
+    survival_hp_frac: float = 0.0
     # Self-play recording hook (train/gen_policy.py). When True the planner
     # stores the root's per-option aggregate visit counts in `last_root` after
     # each single-select decision, so the recorder can label states with the
@@ -382,9 +393,13 @@ class MctsPlanner:
         self._backend = backend
         self._card_index = card_index
         self._clock = clock
-        self._greedy = GreedyAgent(seed=0, card_index=card_index,
-                                   bench_boost=self.config.early_bench,
-                                   bench_floor=self.config.early_bench_floor)
+        self._greedy = GreedyAgent(
+            seed=0, card_index=card_index,
+            bench_boost=self.config.early_bench,
+            bench_floor=self.config.early_bench_floor,
+            survival_bench_boost=self.config.survival_bench,
+            survival_bench_floor=self.config.survival_bench_floor,
+            survival_hp_frac=self.config.survival_hp_frac)
         # take-tactics injection points (SOT-1892): one shared tactical
         # scorer serves whichever of prior/rollout is switched on; with both
         # OFF (champion default) these are aliases of the plain greedy.

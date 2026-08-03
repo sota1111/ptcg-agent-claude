@@ -117,7 +117,10 @@ class GreedyAgent(BaseAgent):
     """One-ply greedy agent over the engine's legal options."""
 
     def __init__(self, seed: int, deck=None, card_index=None,
-                 bench_boost: float = 0.0, bench_floor: int = 0):
+                 bench_boost: float = 0.0, bench_floor: int = 0,
+                 survival_bench_boost: float = 0.0,
+                 survival_bench_floor: int = 0,
+                 survival_hp_frac: float = 0.0):
         super().__init__(seed, deck)
         self._card_index = card_index
         # Early-bench development boost (SOT-1941, opt-in — both 0 => champion
@@ -130,6 +133,20 @@ class GreedyAgent(BaseAgent):
         # items/supporters/attacks. Steers play ORDER, not leaf value.
         self._bench_boost = float(bench_boost)
         self._bench_floor = int(bench_floor)
+        # Conditional survival-bench boost (SOT-2367, opt-in — all three 0/off
+        # => champion byte-identical). Targets the `unpromotable` board_wipe
+        # cause the ELO gauntlet localized (SOT-2365): the champion's Active is
+        # KO'd with an EMPTY bench, so it cannot promote a replacement and the
+        # match ends in a wipe. Unlike SOT-1941's UNCONDITIONAL early_bench
+        # (rejected: it front-loaded bench development every turn, paying tempo
+        # even when no wipe was threatened), this boost fires ONLY when a wipe
+        # is actually imminent: the bench sits below `survival_bench_floor`
+        # AND the champion's Active is near-KO (current HP fraction at or below
+        # `survival_hp_frac`) or absent. It buys the one insurance basic
+        # exactly when it prevents the loss, minimizing the tempo cost.
+        self._survival_bench_boost = float(survival_bench_boost)
+        self._survival_bench_floor = int(survival_bench_floor)
+        self._survival_hp_frac = float(survival_hp_frac)
 
     @property
     def cards(self):
@@ -224,6 +241,7 @@ class GreedyAgent(BaseAgent):
         elif card.card_type == _CT_POKEMON and card.basic:
             base += 15.0
             base += self._early_bench_boost(view)
+            base += self._survival_bench_boost_value(view)
         return base + 0.05 * self._features_value(card)
 
     def _early_bench_boost(self, view: View) -> float:
@@ -238,6 +256,40 @@ class GreedyAgent(BaseAgent):
         if deficit <= 0:
             return 0.0
         return self._bench_boost * deficit
+
+    def _survival_bench_boost_value(self, view: View) -> float:
+        """SOT-2367 opt-in: extra play-priority for a basic Pokémon ONLY when a
+        board wipe is imminent — the bench is below `survival_bench_floor` AND
+        the Active is near-KO (HP fraction <= `survival_hp_frac`) or absent.
+        Off (boost 0 or floor 0) => no effect. Saturating in the bench deficit
+        (like SOT-1941), so the first insurance basic earns the most; gated on
+        threat, so a healthy Active pays no tempo (the SOT-1941 distinction)."""
+        if self._survival_bench_floor <= 0 or self._survival_bench_boost == 0.0:
+            return 0.0
+        bench_count = len(view.me.bench or ())
+        deficit = self._survival_bench_floor - bench_count
+        if deficit <= 0:
+            return 0.0
+        if not self._active_at_wipe_risk(view):
+            return 0.0
+        return self._survival_bench_boost * deficit
+
+    def _active_at_wipe_risk(self, view: View) -> bool:
+        """True when the champion's Active is near-KO (a wipe is threatened).
+
+        Absent Active (must (re)establish one, or it was just KO'd) => at risk.
+        Otherwise compare current HP to max HP: at or below `survival_hp_frac`
+        (a fraction in (0,1]) counts as near-KO. Missing/zero max HP degrades
+        to `not at risk` (no data => no boost), never raising."""
+        active = view.me.active or ()
+        pokemon = active[0] if active else None
+        if pokemon is None:
+            return True
+        max_hp = getattr(pokemon, "max_hp", 0) or 0
+        if max_hp <= 0:
+            return False
+        hp = getattr(pokemon, "hp", 0) or 0
+        return (hp / max_hp) <= self._survival_hp_frac
 
     def _card_target_score(self, view: View, raw: dict) -> float:
         context = view.select.context
