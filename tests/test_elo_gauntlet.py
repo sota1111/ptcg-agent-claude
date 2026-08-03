@@ -14,7 +14,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 
 from eval.elo_gauntlet import (decompose, elo_expected, solve_rating,
-                               DEFAULT_K)
+                               _parse_eval_weights_override, DEFAULT_K)
 
 
 class TestEloExpected(unittest.TestCase):
@@ -82,6 +82,27 @@ class TestUpsetAsymmetry(unittest.TestCase):
         self.assertLess(dec["weak"]["net"], 0.0)
         self.assertLess(dec["weak"]["net"], dec["peer"]["net"])
         self.assertTrue(dec["weak"]["is_upset_tier"])
+
+
+class TestChampionEvalWeightsOverride(unittest.TestCase):
+    """SOT-2335 — the champion-only eval_weights override parser that isolates
+    a defence candidate against the fixed baseline opponent field."""
+
+    def test_none_and_empty_are_no_override(self):
+        self.assertIsNone(_parse_eval_weights_override(None))
+        self.assertIsNone(_parse_eval_weights_override(""))
+
+    def test_parses_json_object(self):
+        got = _parse_eval_weights_override('{"bench_dev": 0.5, "bench_dev_cap": 2}')
+        self.assertEqual(got, {"bench_dev": 0.5, "bench_dev_cap": 2})
+
+    def test_rejects_non_object(self):
+        with self.assertRaises(SystemExit):
+            _parse_eval_weights_override("[1, 2]")
+
+    def test_rejects_bad_json(self):
+        with self.assertRaises(SystemExit):
+            _parse_eval_weights_override("{not json}")
 
 
 if __name__ == "__main__":
