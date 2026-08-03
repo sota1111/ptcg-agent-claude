@@ -96,6 +96,74 @@ REASON_TAG = {
     4: "card_effect",       # a card effect ended the game
 }
 
+# --- SOT-2365: board-wipe decision-cause attribution (diagnostic-only) -------
+# cycle1 established that the champion's rating leak is dominated by upset-tier
+# board_wipe (盤面全滅, ~92%) losses, but NOT *where in the search/action policy*
+# that wipe originates. This layer sub-classifies each board_wipe loss into a
+# decision cause, from the champion's last pre-terminal board snapshot only, so
+# the two downstream action-lever children get a concrete target metric:
+#   * unpromotable            — no over-commitment signal AND an empty bench at
+#                               the wipe (no Pokémon to promote): a survival-
+#                               bench shortfall. SOT-2367's target.
+#   * doomed_active_overcommit— the Active that got KO'd carried heavy committed
+#                               resources (>= OVERCOMMIT_ENERGY energies, or it
+#                               was an evolution): resources poured into a single
+#                               attacker that then died instead of retreating.
+#                               SOT-2366's target.
+#   * other_wipe              — neither is clearly determinable (residual bucket;
+#                               we deliberately DO NOT over-claim a cause).
+# The attribution is intentionally coarse: it is judged from a single snapshot,
+# so anything not clearly one of the first two is pushed to other_wipe. The
+# three causes PARTITION the board_wipe losses (each board_wipe loss gets exactly
+# one cause), so their sum equals the cell's board_wipe count (regression check).
+OVERCOMMIT_ENERGY = 2
+BOARD_WIPE_CAUSES = ("unpromotable", "doomed_active_overcommit", "other_wipe")
+
+
+def classify_board_wipe(last_bench, last_active_energy, last_active_evolved):
+    """Attribute one champion board_wipe loss to a decision cause.
+
+    Inputs come from the champion's last pre-terminal board snapshot
+    (``_champ_snapshot``): ``last_bench`` = benched Pokémon count in the final
+    obs; ``last_active_energy`` / ``last_active_evolved`` describe the Active
+    the champion last had in play (the one that got KO'd), or ``None`` when the
+    champion had no resolvable Active. Priority order (documented above):
+
+    1. over-commitment signal on the doomed Active -> ``doomed_active_overcommit``
+    2. else empty bench at the wipe                -> ``unpromotable``
+    3. else                                        -> ``other_wipe``
+    """
+    if last_active_energy is not None and (
+            last_active_energy >= OVERCOMMIT_ENERGY or last_active_evolved):
+        return "doomed_active_overcommit"
+    if last_bench == 0:
+        return "unpromotable"
+    return "other_wipe"
+
+
+def _champ_snapshot(obs, champ_seat):
+    """Champion-side board snapshot for board-wipe cause attribution.
+
+    Reads the raw obs ``current.players[champ_seat]`` — an ABSOLUTE seat index
+    (0/1), so it resolves the champion's side regardless of whose turn it is
+    (``yourIndex`` floats; ``players`` does not). Returns
+    ``(bench_count, active_energy, active_evolved)`` where the last two are
+    ``None`` when the champion has no Active in this obs, or ``None`` when the
+    champion side cannot be resolved. Defensive: missing/unknown keys degrade to
+    empty rather than raising (same convention as agents/observation.py)."""
+    cur = obs.get("current") or {}
+    players = cur.get("players") or ()
+    if not (0 <= champ_seat < len(players)):
+        return None
+    side = players[champ_seat] if isinstance(players[champ_seat], dict) else {}
+    bench = [b for b in (side.get("bench") or ()) if isinstance(b, dict)]
+    active = [a for a in (side.get("active") or ()) if isinstance(a, dict)]
+    if not active:
+        return (len(bench), None, None)
+    act = active[0]
+    return (len(bench), len(act.get("energies") or ()),
+            bool(act.get("preEvolution")))
+
 # --- Opponent field ---------------------------------------------------------
 # anchor = fixed strength-prior rating (the champion's rating floats to balance
 # the field). budget = mcts per-move search seconds (None for non-searching
@@ -192,35 +260,51 @@ def load_deck(path: str) -> list:
         return [int(x) for x in f.read().split("\n")[:60]]
 
 
-def play_match(agent0, agent1):
-    """One engine match. Returns (result, reason, decisions, fault).
+def play_match(agent0, agent1, champ_seat=None):
+    """One engine match. Returns (result, reason, decisions, fault, wipe_trace).
 
     result: 0/1 winner seat, 2 draw, -1 unfinished/fault.
     reason: engine RESULT.reason of the terminal obs (or None).
+    wipe_trace: the champion's last pre-terminal board snapshot
+        ``(last_bench, last_active_energy, last_active_evolved)`` at
+        ``champ_seat`` (used to attribute a board_wipe loss to a decision cause),
+        or ``None`` when ``champ_seat`` is None / the champion side never
+        resolved. ``last_active_*`` retain the champion's most recent Active in
+        play — i.e. the one that got KO'd — even though the terminal obs shows
+        an empty Active.
     """
     obs, start = game.battle_start(agent0._deck, agent1._deck)
     if obs is None:
         raise RuntimeError(
             f"battle_start failed: errorPlayer={start.errorPlayer} "
             f"errorType={start.errorType}")
+    last_bench = last_energy = last_evolved = None
     try:
         decisions = 0
         while decisions < MAX_DECISIONS:
+            if champ_seat is not None:
+                snap = _champ_snapshot(obs, champ_seat)
+                if snap is not None:
+                    last_bench = snap[0]
+                    if snap[1] is not None:   # champion has an Active this obs
+                        last_energy, last_evolved = snap[1], snap[2]
             current = obs.get("current") or {}
             result = current.get("result", -1)
             if result != -1:
-                return result, _terminal_reason(obs), decisions, False
+                trace = (None if champ_seat is None
+                         else (last_bench, last_energy, last_evolved))
+                return result, _terminal_reason(obs), decisions, False, trace
             agent = agent0 if current.get("yourIndex", 0) == 0 else agent1
             try:
                 action = agent.act(obs)
             except Exception:
-                return -1, None, decisions, True   # agent exception
+                return -1, None, decisions, True, None   # agent exception
             try:
                 obs = game.battle_select(action)
             except Exception:
-                return -1, None, decisions, True   # engine reject
+                return -1, None, decisions, True, None   # engine reject
             decisions += 1
-        return -1, None, decisions, True
+        return -1, None, decisions, True, None
     finally:
         game.battle_finish()
 
@@ -242,11 +326,13 @@ def run_cell(cell, champion_config, n, base_rng, champ_deck, champ_deck_path):
         opp = make_agent(cell["agent"], seed=seed_b, deck=opp_deck,
                          **(cell.get("opp_config") or {}))
         champ_first = (i % 2 == 0)
+        champ_seat = 0 if champ_first else 1
         p0, p1 = (champ, opp) if champ_first else (opp, champ)
-        result, reason, _dec, fault = play_match(p0, p1)
+        result, reason, _dec, fault, wipe_trace = play_match(p0, p1, champ_seat)
         if fault or result == -1:
             faults += 1
             continue
+        wipe_cause = ""
         if result == 2:
             outcome, score = "draw", 0.5
             reason_tag = "draw"
@@ -258,8 +344,13 @@ def run_cell(cell, champion_config, n, base_rng, champ_deck, champ_deck_path):
             # convention as analysis/local_loss_tags.py)
             reason_tag = (REASON_TAG.get(reason, "unknown")
                           if outcome == "loss" else "")
+            # SOT-2365: sub-classify board_wipe losses by decision cause from
+            # the champion's last pre-terminal snapshot (diagnostic-only).
+            if reason_tag == "board_wipe":
+                lb, le, lev = wipe_trace or (None, None, None)
+                wipe_cause = classify_board_wipe(lb, le, lev)
         rows.append({"match": i, "outcome": outcome, "score": score,
-                     "reason_tag": reason_tag})
+                     "reason_tag": reason_tag, "wipe_cause": wipe_cause})
     return rows, faults
 
 
@@ -329,10 +420,17 @@ def cmd_run(args):
                 losses = sum(1 for r in rows if r["outcome"] == "loss")
                 draws = sum(1 for r in rows if r["outcome"] == "draw")
                 loss_tags = {}
+                bw_by_cause = {}
                 for r in rows:
                     if r["outcome"] == "loss":
                         loss_tags[r["reason_tag"]] = loss_tags.get(
                             r["reason_tag"], 0) + 1
+                        # SOT-2365: board_wipe decision-cause tally (the causes
+                        # partition the board_wipe losses, so this sums to
+                        # loss_tags["board_wipe"] — a summary regression check).
+                        if r.get("wipe_cause"):
+                            bw_by_cause[r["wipe_cause"]] = bw_by_cause.get(
+                                r["wipe_cause"], 0) + 1
                 rec = {
                     "ts": datetime.datetime.now(
                         datetime.timezone.utc).isoformat(),
@@ -345,13 +443,15 @@ def cmd_run(args):
                     "n": len(rows), "faults": faults,
                     "wins": wins, "losses": losses, "draws": draws,
                     "loss_by_tag": loss_tags,
+                    "board_wipe_by_cause": bw_by_cause,
                 }
                 f.write(json.dumps(rec, sort_keys=True) + "\n")
                 f.flush()
                 decided = wins + losses
                 wr = wins / decided if decided else float("nan")
                 print(f"   champ {wins}-{losses} (draw {draws}) wr={wr:.3f} "
-                      f"loss_tags={loss_tags} faults={faults}", flush=True)
+                      f"loss_tags={loss_tags} bw_cause={bw_by_cause} "
+                      f"faults={faults}", flush=True)
     print(f"appended to {args.out}")
 
 
@@ -409,12 +509,17 @@ def _agg_by_cell(recs_for_seed):
         c = by_cell.setdefault(r["cell"], {
             "cell": r["cell"], "tier": r["tier"], "anchor": r["anchor"],
             "opp_agent": r["opp_agent"], "wins": 0, "losses": 0, "draws": 0,
-            "loss_by_tag": {}})
+            "loss_by_tag": {}, "board_wipe_by_cause": {}})
         c["wins"] += r["wins"]
         c["losses"] += r["losses"]
         c["draws"] += r["draws"]
         for tag, v in (r.get("loss_by_tag") or {}).items():
             c["loss_by_tag"][tag] = c["loss_by_tag"].get(tag, 0) + v
+        # SOT-2365: aggregate the board_wipe decision-cause tally (absent from
+        # pre-2365 records, so default-empty keeps old JSONL readable).
+        for cause, v in (r.get("board_wipe_by_cause") or {}).items():
+            c["board_wipe_by_cause"][cause] = (
+                c["board_wipe_by_cause"].get(cause, 0) + v)
     return list(by_cell.values())
 
 
@@ -432,11 +537,41 @@ def decompose(cells, r_star, k=DEFAULT_K):
         gain = c["wins"] * k * (1.0 - e)
         drain = c["losses"] * k * (0.0 - e)
         draw_flow = c["draws"] * k * (0.5 - e)
+        # SOT-2365: isolate the board_wipe portion of this cell's loss drain.
+        # drain from board_wipe losses = board_wipe_losses * K*(0-E) — the slice
+        # of the rating leak the downstream retreat/survival children must cut.
+        bw_losses = (c.get("loss_by_tag") or {}).get("board_wipe", 0)
+        bw_drain = bw_losses * k * (0.0 - e)
         out.append({**c, "expected": e, "winrate": wr,
                     "gain_from_wins": gain, "drain_from_losses": drain,
                     "draw_flow": draw_flow, "net": gain + drain + draw_flow,
-                    "is_upset_tier": c["anchor"] < r_star})
+                    "is_upset_tier": c["anchor"] < r_star,
+                    "board_wipe_losses": bw_losses,
+                    "board_wipe_drain": bw_drain,
+                    "board_wipe_by_cause": dict(c.get("board_wipe_by_cause")
+                                                or {})})
     return out
+
+
+def upset_board_wipe_breakdown(dec):
+    """Upset-tier board_wipe rating drain + decision-cause counts.
+
+    Given a ``decompose()`` output, aggregate over the UPSET tiers only
+    (anchor < R*, where each loss costs K*E with E large — the tiers that leak
+    rating). ``net`` is ``upset_tier_board_wipe_net``: the rating drained by
+    board_wipe losses to weaker opponents at R*. It is the target metric for the
+    downstream action-lever children (SOT-2366 preventive retreat / SOT-2367
+    survival bench) — a less-negative net means fewer/cheaper board_wipe upsets.
+    ``by_cause`` breaks those losses into the three decision causes.
+    """
+    upset = [d for d in dec if d.get("is_upset_tier")]
+    net = sum(d.get("board_wipe_drain", 0.0) for d in upset)
+    losses = sum(d.get("board_wipe_losses", 0) for d in upset)
+    by_cause = {}
+    for d in upset:
+        for cause, v in (d.get("board_wipe_by_cause") or {}).items():
+            by_cause[cause] = by_cause.get(cause, 0) + v
+    return {"net": net, "losses": losses, "by_cause": by_cause}
 
 
 def cmd_summary(args):
@@ -512,6 +647,21 @@ def cmd_summary(args):
     print(f"  peer tier: winrate {peer_wr:.3f}  NET {peer_net:+.1f}")
     print(f"  champion losses: {total_losses}  board_wipe {bw} "
           f"({bw_pct:.1f}%)  all_tags={all_loss_tags}")
+
+    # SOT-2365: upset-tier board_wipe decision-cause breakdown + the downstream
+    # children's target metric. board_wipe_total here is the sum over ALL cells;
+    # the per-cause tally is over the UPSET tiers (where the rating actually
+    # leaks). Sum of the upset by_cause == the upset tiers' board_wipe count
+    # (each board_wipe loss has exactly one cause) — a regression invariant.
+    bw_break = upset_board_wipe_breakdown(dec)
+    print(f"\n--- upset-tier board_wipe decision-cause breakdown (at "
+          f"R*={r_star_pooled:.1f}) ---")
+    print(f"  upset_tier_board_wipe_net (rating drained by board_wipe upset "
+          f"losses): {bw_break['net']:+.1f}")
+    print(f"  upset board_wipe losses: {bw_break['losses']}  "
+          f"by_cause={bw_break['by_cause'] or '{}'}")
+    for cause in BOARD_WIPE_CAUSES:
+        print(f"    {cause:<26} {bw_break['by_cause'].get(cause, 0)}")
 
     # field-wide win rate = what the existing win-rate bench "sees".
     field_wins = sum(d["wins"] for d in dec)

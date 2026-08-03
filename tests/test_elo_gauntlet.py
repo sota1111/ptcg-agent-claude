@@ -15,7 +15,10 @@ sys.path.insert(0, REPO)
 
 from eval.elo_gauntlet import (decompose, elo_expected, solve_rating,
                                _parse_eval_weights_override, DEFAULT_K,
-                               build_field, compute_compare, ATTACK_LEVER)
+                               build_field, compute_compare, ATTACK_LEVER,
+                               classify_board_wipe, upset_board_wipe_breakdown,
+                               _champ_snapshot, BOARD_WIPE_CAUSES,
+                               OVERCOMMIT_ENERGY)
 
 
 def _recs(seeds, cells):
@@ -183,6 +186,126 @@ class TestAttackLeverCompare(unittest.TestCase):
         # the lever is a decision-commitment diff, not compute/eval
         self.assertIn("deviate_margin", ATTACK_LEVER)
         self.assertLess(ATTACK_LEVER["deviate_margin"], 0.1)
+
+
+class TestClassifyBoardWipe(unittest.TestCase):
+    """SOT-2365 — board_wipe decision-cause attribution from the champion's
+    last pre-terminal board snapshot (diagnostic-only, intentionally coarse)."""
+
+    def test_overcommit_from_energy(self):
+        # >= OVERCOMMIT_ENERGY energies on the doomed Active -> over-commitment,
+        # even with a non-empty bench.
+        self.assertEqual(classify_board_wipe(0, OVERCOMMIT_ENERGY, False),
+                         "doomed_active_overcommit")
+        self.assertEqual(classify_board_wipe(2, 3, False),
+                         "doomed_active_overcommit")
+
+    def test_overcommit_from_evolution(self):
+        # an evolved Active is a resource commitment even with 1 energy
+        self.assertEqual(classify_board_wipe(0, 1, True),
+                         "doomed_active_overcommit")
+
+    def test_unpromotable_empty_bench_no_investment(self):
+        # empty bench + no over-commit signal -> survival-bench shortfall
+        self.assertEqual(classify_board_wipe(0, 1, False), "unpromotable")
+        self.assertEqual(classify_board_wipe(0, None, None), "unpromotable")
+
+    def test_other_when_not_clearly_determinable(self):
+        # non-empty bench but light Active investment -> residual bucket
+        self.assertEqual(classify_board_wipe(2, 1, False), "other_wipe")
+        # champion side never resolved (all None) -> residual, never over-claim
+        self.assertEqual(classify_board_wipe(None, None, None), "other_wipe")
+
+    def test_causes_are_the_declared_partition(self):
+        for args in [(0, 2, False), (0, 1, False), (2, 1, False),
+                     (None, None, None)]:
+            self.assertIn(classify_board_wipe(*args), BOARD_WIPE_CAUSES)
+
+
+class TestChampSnapshot(unittest.TestCase):
+    """SOT-2365 — champion-side board snapshot reads the ABSOLUTE seat and is
+    defensive against missing/odd keys."""
+
+    def _obs(self, seat0, seat1):
+        return {"current": {"players": [seat0, seat1]}}
+
+    def test_reads_absolute_seat_and_active_energy(self):
+        champ = {"bench": [{"id": 1}, {"id": 2}],
+                 "active": [{"id": 9, "energies": [0, 1, 2],
+                             "preEvolution": [{"id": 5}]}]}
+        opp = {"bench": [], "active": [{"id": 7}]}
+        # champion at seat 1 -> resolve seat 1 regardless of the opponent side
+        bench, energy, evolved = _champ_snapshot(self._obs(opp, champ), 1)
+        self.assertEqual(bench, 2)
+        self.assertEqual(energy, 3)
+        self.assertTrue(evolved)
+
+    def test_no_active_returns_none_energy(self):
+        side = {"bench": [{"id": 1}], "active": []}
+        bench, energy, evolved = _champ_snapshot(self._obs(side, {}), 0)
+        self.assertEqual(bench, 1)
+        self.assertIsNone(energy)
+        self.assertIsNone(evolved)
+
+    def test_unresolvable_side_returns_none(self):
+        self.assertIsNone(_champ_snapshot({"current": {"players": []}}, 0))
+        self.assertIsNone(_champ_snapshot({}, 0))
+
+    def test_missing_keys_do_not_raise(self):
+        # empty side dict -> bench 0, no active
+        self.assertEqual(_champ_snapshot(self._obs({}, {}), 0), (0, None, None))
+
+
+class TestUpsetBoardWipeNet(unittest.TestCase):
+    """SOT-2365 — the downstream children's target metric aggregates board_wipe
+    drain + causes over the UPSET tiers only."""
+
+    def _cells(self):
+        return [
+            # upset tier (anchor < R*=1500): 25 board_wipe losses, 3 causes
+            {"cell": "weak", "tier": "weak", "anchor": 1150.0,
+             "opp_agent": "random", "wins": 70, "losses": 30, "draws": 0,
+             "loss_by_tag": {"board_wipe": 25, "deck_out": 5},
+             "board_wipe_by_cause": {"unpromotable": 15,
+                                     "doomed_active_overcommit": 8,
+                                     "other_wipe": 2}},
+            # NON-upset strong tier (anchor 1660 > R*): excluded from the metric
+            {"cell": "strong", "tier": "strong", "anchor": 1660.0,
+             "opp_agent": "mcts", "wins": 30, "losses": 70, "draws": 0,
+             "loss_by_tag": {"board_wipe": 40},
+             "board_wipe_by_cause": {"unpromotable": 40}},
+        ]
+
+    def test_breakdown_over_upset_tiers_only(self):
+        r_star = 1500.0
+        dec = decompose(self._cells(), r_star)
+        br = upset_board_wipe_breakdown(dec)
+        # only the weak (upset) tier contributes; strong (non-upset) excluded
+        self.assertEqual(br["by_cause"], {"unpromotable": 15,
+                                          "doomed_active_overcommit": 8,
+                                          "other_wipe": 2})
+        self.assertEqual(br["losses"], 25)
+        # net = board_wipe_losses * K*(0-E@R*), strictly negative (a drain)
+        e = elo_expected(r_star, 1150.0)
+        self.assertAlmostEqual(br["net"], 25 * DEFAULT_K * (0.0 - e), places=6)
+        self.assertLess(br["net"], 0)
+
+    def test_cause_counts_partition_board_wipe_count(self):
+        # regression invariant: the upset causes sum to the upset board_wipe
+        # loss count (each board_wipe loss has exactly one cause)
+        dec = decompose(self._cells(), 1500.0)
+        br = upset_board_wipe_breakdown(dec)
+        self.assertEqual(sum(br["by_cause"].values()), br["losses"])
+
+    def test_empty_and_legacy_records_are_safe(self):
+        # cells with no board_wipe_by_cause (pre-2365 JSONL) -> empty breakdown
+        cells = [{"cell": "weak", "tier": "weak", "anchor": 1150.0,
+                  "opp_agent": "random", "wins": 5, "losses": 5, "draws": 0,
+                  "loss_by_tag": {}}]
+        br = upset_board_wipe_breakdown(decompose(cells, 1500.0))
+        self.assertEqual(br["losses"], 0)
+        self.assertEqual(br["by_cause"], {})
+        self.assertEqual(br["net"], 0.0)
 
 
 if __name__ == "__main__":
