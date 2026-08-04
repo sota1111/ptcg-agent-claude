@@ -164,6 +164,23 @@ class PlannerConfig:
     wipe_retreat_bias: float = 0.0
     wipe_overcommit_penalty: float = 0.0
     active_vulnerable_hp_frac: float = 0.0
+    # Single-Observer ISMCTS (SOT-2403, opt-in — default OFF => champion
+    # byte-identical, main.py/FABLE_CONFIG untouched). When True the planner
+    # abandons the per-world determinized trees (independent tree per
+    # determinization, root statistics AVERAGED across worlds in `_best_action`
+    # — the classic strategy-fusion failure mode) for a SINGLE shared
+    # information-set tree: statistics for a decision point aggregate into one
+    # node across all determinizations, selection considers only the actions
+    # LEGAL in the currently sampled world (legal-action filter), and the UCB
+    # exploration term is corrected by each action's availability count
+    # (Cowling et al. 2012). The determinization POOL is still the champion's
+    # `n_worlds` sampling (reused for a controlled A/B: the only thing that
+    # changes is the aggregation structure, not the world source), and the
+    # engine search API remains the single source of truth for legality and
+    # transitions (search_step forks a child state, so a world root is descended
+    # many times). Root actions are chosen from the single shared statistic
+    # (per-world averaging abolished). See `_plan_ismcts`.
+    ismcts: bool = False
     # Self-play recording hook (train/gen_policy.py). When True the planner
     # stores the root's per-option aggregate visit counts in `last_root` after
     # each single-select decision, so the recorder can label states with the
@@ -378,6 +395,26 @@ class _World:
         self.iterations = 0
 
 
+class _ISNode:
+    """Shared information-set node (SO-ISMCTS, SOT-2403).
+
+    Unlike `_Node` there is no `sid`/`obs`: a shared node stands for a decision
+    point across MANY determinizations, so it stores only statistics keyed by a
+    determinization-stable action key (the ROOT uses its fill-independent
+    candidate position; deeper nodes use the canonical option key from
+    `_opt_key`). `stats[key] = [visits, value_sum, availability]` where
+    availability counts how many descents reached this node with `key` legal —
+    the ISMCTS correction that keeps rarely-available actions from looking
+    under-explored.
+    """
+    __slots__ = ("stats", "children", "priors")
+
+    def __init__(self):
+        self.stats = {}     # key -> [visits, value_sum, availability]
+        self.children = {}  # key -> _ISNode
+        self.priors = {}    # key -> prior probability (PUCT)
+
+
 def _softmax(scores, temperature) -> list:
     if not scores:
         return []
@@ -467,6 +504,9 @@ class MctsPlanner:
             return list(candidates[0])
 
         root_player = view.your_index
+        if cfg.ismcts:
+            return self._plan_ismcts(view, candidates, priors, root_player,
+                                     rng, deadline, t0)
         worlds = []
         iterations = 0
         try:
@@ -737,7 +777,13 @@ class MctsPlanner:
     # ---- rollout ------------------------------------------------------------
 
     def _rollout(self, node, root_player, rng, deadline) -> float:
-        sid, obs = node.sid, node.obs
+        return self._rollout_sid(node.sid, node.obs, root_player, rng, deadline)
+
+    def _rollout_sid(self, sid, obs, root_player, rng, deadline) -> float:
+        """Rollout from a bare (sid, obs). Forks the engine state via
+        search_step and releases only the forked transients — the passed `sid`
+        is owned by the caller (a tree node's sid, or a shared-tree world root)
+        and is never released here."""
         start_turn = getattr(getattr(obs, "current", None), "turn", 0) or 0
         turn_cap = start_turn + self.config.rollout_turns
         transients = []
@@ -872,3 +918,234 @@ class MctsPlanner:
             if challenger < incumbent + deviate_margin:
                 best_i = 0  # not enough evidence to leave the greedy prior
         return candidates[best_i]
+
+    # ---- SO-ISMCTS (single shared information-set tree, SOT-2403) ------------
+
+    @staticmethod
+    def _opt_key(opt) -> tuple:
+        """Determinization-STABLE canonical identity of one engine option.
+
+        Uses the option's semantic fields (type, the card involved, the board
+        area/position it targets, the attack, etc.) and deliberately EXCLUDES
+        `serial` (a per-instance id the engine assigns per determinization, so
+        it differs for hidden cards between worlds). This is what lets the same
+        real action map to the same shared-tree edge across determinizations.
+        """
+        g = lambda name: getattr(opt, name, None)
+        return (g("type"), g("cardId"), g("area"), g("index"),
+                g("inPlayArea"), g("inPlayIndex"), g("attackId"),
+                g("number"), g("specialConditionType"), g("count"),
+                g("toolIndex"), g("energyIndex"), g("playerIndex"))
+
+    def _action_key(self, obs, action) -> tuple:
+        """Canonical key for a candidate action (list of option indices) at a
+        non-root node. Sorted by repr so a multi-select's key is order- and
+        None/int-comparison-safe while staying hashable for the stats dict."""
+        opts = obs.select.option
+        return tuple(sorted((self._opt_key(opts[i]) for i in action), key=repr))
+
+    def _plan_ismcts(self, view, candidates, priors, root_player, rng,
+                     deadline, t0) -> list:
+        """SO-ISMCTS decision: one shared information-set tree fed by the
+        champion's `n_worlds` determinization pool. Anytime/degrade contract is
+        identical to the determinized path (greedy prior on empty search)."""
+        cfg = self.config
+        root = _ISNode()
+        root.priors = {i: (priors[i] if i < len(priors) else 0.0)
+                       for i in range(len(candidates))}
+        roots = []       # persistent determinized roots: [(sid, obs), ...]
+        live_sids = []   # world-root sids, released once at decision end
+        iterations = 0
+        try:
+            for _ in range(max(1, cfg.n_worlds)):
+                if roots and self._clock() >= deadline:
+                    break
+                try:
+                    fills = self._fills_fn(view.raw, self._own_deck, rng,
+                                           self.cards)
+                    sid, obs = self.backend.begin(view.raw, fills,
+                                                  manual_coin=True)
+                except Exception:
+                    continue  # inconsistent fills etc.: skip this world
+                live_sids.append(sid)
+                if _terminal_value(obs, root_player) is None:
+                    n_opts = len(getattr(obs.select, "option", None) or ())
+                    if any(i >= n_opts for a in candidates for i in a):
+                        continue  # determinized root select mismatch: skip
+                roots.append((sid, obs))
+            if not roots:
+                self.degraded_count += 1
+                self.last_stats = {"iterations": 0, "worlds": 0,
+                                   "degraded": True, "ismcts": True}
+                return list(candidates[0])
+            while self._clock() < deadline:
+                if cfg.max_iterations is not None \
+                        and iterations >= cfg.max_iterations:
+                    break
+                sid, obs = roots[iterations % len(roots)]
+                self._ismcts_iterate(root, candidates, sid, obs,
+                                     root_player, rng, deadline)
+                iterations += 1
+        finally:
+            for s in live_sids:
+                try:
+                    self.backend.release(s)
+                except Exception:
+                    pass
+            try:
+                self.backend.end()
+            except Exception:
+                pass
+        if not root.stats:
+            self.degraded_count += 1
+            self.last_stats = {"iterations": iterations, "worlds": len(roots),
+                               "degraded": True, "ismcts": True}
+            return list(candidates[0])
+        best = self._ismcts_best_action(root, candidates, cfg.deviate_margin)
+        self.last_stats = {"iterations": iterations, "worlds": len(roots),
+                           "elapsed_s": self._clock() - t0, "ismcts": True}
+        if cfg.record_root:
+            self.last_root = self._record_root_ismcts(root, candidates)
+        return list(best)
+
+    def _ismcts_iterate(self, root, root_candidates, root_sid, root_obs,
+                        root_player, rng, deadline) -> None:
+        """One SO-ISMCTS descent through the shared tree in a single sampled
+        world. Forks the world root via search_step; releases only the forks
+        (the world root sid is owned by `_plan_ismcts`)."""
+        cfg = self.config
+        node = root
+        sid, obs = root_sid, root_obs
+        depth = 0
+        is_root = True
+        path = []      # [(node, chosen_key, legal_keys), ...]
+        forks = []     # forked sids to release at the end of this descent
+        value = None
+        try:
+            while True:
+                term = _terminal_value(obs, root_player)
+                if term is not None:
+                    value = term
+                    break
+                if getattr(obs, "select", None) is None:
+                    value = self.evaluator.evaluate(obs, root_player)
+                    break
+                if depth >= cfg.max_tree_depth:
+                    value = self._rollout_sid(sid, obs, root_player, rng,
+                                              deadline)
+                    break
+                if is_root:
+                    cand_actions = root_candidates
+                    keys = list(range(len(cand_actions)))
+                    node_priors = [node.priors.get(i, 0.0) for i in keys]
+                else:
+                    cand_actions, cand_priors = self._node_candidates(obs, rng)
+                    keys = [self._action_key(obs, a) for a in cand_actions]
+                    node_priors = list(cand_priors)
+                    for k, p in zip(keys, node_priors):
+                        if k not in node.priors:
+                            node.priors[k] = p
+                actor = _obs_actor(obs)
+                ci = self._ismcts_select(node, keys, node_priors, actor,
+                                         root_player)
+                chosen_key = keys[ci]
+                path.append((node, chosen_key, keys))
+                sid, obs = self.backend.step(sid, cand_actions[ci])
+                sid, obs = self._resolve_chance(sid, obs, rng)
+                forks.append(sid)
+                child = node.children.get(chosen_key)
+                newly = child is None
+                if newly:
+                    child = _ISNode()
+                    node.children[chosen_key] = child
+                node = child
+                is_root = False
+                depth += 1
+                if newly:
+                    term = _terminal_value(obs, root_player)
+                    value = (term if term is not None
+                             else self._rollout_sid(sid, obs, root_player,
+                                                    rng, deadline))
+                    break
+            # Backpropagation: bump availability for EVERY legal key on the
+            # path (the ISMCTS correction), visits/value only for the chosen.
+            for nd, chosen_key, legal_keys in path:
+                for k in legal_keys:
+                    st = nd.stats.get(k)
+                    if st is None:
+                        st = [0, 0.0, 0]
+                        nd.stats[k] = st
+                    st[2] += 1
+                st = nd.stats[chosen_key]
+                st[0] += 1
+                st[1] += value
+        finally:
+            for s in forks:
+                try:
+                    self.backend.release(s)
+                except Exception:
+                    pass
+
+    def _ismcts_select(self, node, keys, priors, actor, root_player) -> int:
+        """Pick a legal action at a shared node. Unexpanded legal actions
+        (visits==0) are expanded first (highest prior); otherwise an
+        availability-corrected PUCT over the legal set — the exploration term
+        scales with sqrt(availability) instead of the champion's sqrt(total
+        sibling visits), so an action explored less BECAUSE it is rarely legal
+        is not mistaken for one that is genuinely under-visited."""
+        c = self.config.uct_c
+        untried = [i for i, k in enumerate(keys)
+                   if node.stats.get(k, (0,))[0] == 0]
+        if untried:
+            best_i = untried[0]
+            best_p = priors[best_i] if best_i < len(priors) else 0.0
+            for i in untried[1:]:
+                p = priors[i] if i < len(priors) else 0.0
+                if p > best_p:
+                    best_i, best_p = i, p
+            return best_i
+        best_i, best_key = 0, None
+        for i, k in enumerate(keys):
+            visits, value_sum, avail = node.stats[k]
+            q = value_sum / visits
+            if actor != root_player:
+                q = 1.0 - q
+            prior = priors[i] if i < len(priors) else 0.0
+            score = q + c * prior * math.sqrt(max(avail, 1)) / (1 + visits)
+            if best_key is None or score > best_key:
+                best_i, best_key = i, score
+        return best_i
+
+    @staticmethod
+    def _ismcts_best_action(root, candidates, deviate_margin: float = 0.0):
+        """Root action from the SINGLE shared statistic (most visits), with the
+        same greedy-prior deviate_margin guard as the determinized path."""
+        totals = []
+        for i in range(len(candidates)):
+            st = root.stats.get(i, [0, 0.0, 0])
+            totals.append((st[0], st[1]))
+        best_i, best_key = 0, None
+        for i, (visits, value) in enumerate(totals):
+            key = (visits, value, -i)
+            if best_key is None or key > best_key:
+                best_i, best_key = i, key
+        if deviate_margin > 0.0 and best_i != 0 and totals[0][0]:
+            challenger = totals[best_i][1] / totals[best_i][0] \
+                if totals[best_i][0] else 0.0
+            incumbent = totals[0][1] / totals[0][0]
+            if challenger < incumbent + deviate_margin:
+                best_i = 0
+        return candidates[best_i]
+
+    @staticmethod
+    def _record_root_ismcts(root, candidates):
+        """Per-option aggregate root visits (policy-net training target), from
+        the shared root's single statistic. Same contract as `_record_root`."""
+        if not candidates or not all(len(a) == 1 for a in candidates):
+            return None
+        totals = [root.stats.get(i, [0, 0.0, 0])[0]
+                  for i in range(len(candidates))]
+        if sum(totals) <= 0 or len(candidates) < 2:
+            return None
+        return {"opt_visits": {candidates[i][0]: totals[i]
+                               for i in range(len(candidates))}}
