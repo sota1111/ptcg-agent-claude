@@ -313,9 +313,18 @@ def elo_expected(r_champ: float, r_opp: float) -> float:
     return 1.0 / (1.0 + 10.0 ** ((r_opp - r_champ) / 400.0))
 
 
-def run_cell(cell, champion_config, n, base_rng, champ_deck, champ_deck_path):
-    """Play n side-alternating champion(mcts) vs cell-opponent matches."""
-    opp_deck = (load_deck(cell["deck"]) if cell.get("deck") else champ_deck)
+def run_cell(cell, champion_config, n, base_rng, champ_deck, field_deck):
+    """Play n side-alternating champion(mcts) vs cell-opponent matches.
+
+    ``champ_deck`` is the deck the champion-under-test plays; ``field_deck`` is
+    the deck the *mirror* opponents (cells without their own ``deck``) play.
+    In the baseline arm the two are the same list, so the field is a true
+    mirror and behaviour is byte-identical to the pre-deck-swap harness. In the
+    SOT-2402 deck-swap A/B (``--candidate-deck``) ``champ_deck`` is the
+    candidate archetype while ``field_deck`` stays pinned to the shipped
+    champion deck — the fixed reference field the baseline arm was measured on.
+    """
+    opp_deck = (load_deck(cell["deck"]) if cell.get("deck") else field_deck)
     rows = []
     faults = 0
     for i in range(n):
@@ -400,13 +409,22 @@ def cmd_run(args):
     if args.attack_lever:
         overrides = {**overrides, **ATTACK_LEVER}
         champion_config.update(ATTACK_LEVER)
-    champ_deck = load_deck(args.deck)
+    # SOT-2402 deck-swap A/B: the opponent field stays pinned to --deck
+    # (field_deck), and --candidate-deck (if given) swaps ONLY the
+    # champion-under-test's deck. Absent => champ_deck IS field_deck, so the
+    # field is a true mirror and the run is byte-identical to the pre-2402
+    # harness (champion-default preserved).
+    candidate_deck_path = getattr(args, "candidate_deck", None)
+    field_deck = load_deck(args.deck)
+    champ_deck = load_deck(candidate_deck_path) if candidate_deck_path else field_deck
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
 
     print(f"ELO-GAUNTLET run: seeds={seeds} n={args.n} "
           f"champion_budget={args.champion_budget}s K={args.k} "
           f"overrides={overrides or '(baseline)'}\n"
           f"  field={[c['id'] for c in field]}\n"
+          f"  champion_deck={candidate_deck_path or args.deck} "
+          f"(field pinned to {args.deck})\n"
           f"  champion_eval_weights_override={ew_override}", flush=True)
     with open(args.out, "a") as f:
         for seed in seeds:
@@ -415,7 +433,7 @@ def cmd_run(args):
                 print(f"-> seed {seed} cell {cell['id']} "
                       f"({cell['note']}) ...", flush=True)
                 rows, faults = run_cell(cell, champion_config, args.n, base,
-                                        champ_deck, args.deck)
+                                        champ_deck, field_deck)
                 wins = sum(1 for r in rows if r["outcome"] == "win")
                 losses = sum(1 for r in rows if r["outcome"] == "loss")
                 draws = sum(1 for r in rows if r["outcome"] == "draw")
@@ -440,6 +458,7 @@ def cmd_run(args):
                     "champion_budget": args.champion_budget,
                     "champion_eval_weights_override": ew_override or {},
                     "champion_overrides": overrides,
+                    "candidate_deck": candidate_deck_path or "",
                     "n": len(rows), "faults": faults,
                     "wins": wins, "losses": losses, "draws": draws,
                     "loss_by_tag": loss_tags,
@@ -830,7 +849,16 @@ def main():
                         "FABLE_CONFIG); e.g. '{\"bench_dev\":0.5,"
                         "\"bench_dev_cap\":2}'. Isolates a defence/attack "
                         "candidate against the fixed reference field.")
-    r.add_argument("--deck", default="deck.csv")
+    r.add_argument("--deck", default="deck.csv",
+                   help="the field-reference deck; the opponent field (incl. "
+                        "the mirror cells) always plays this. Default is the "
+                        "shipped champion deck.csv.")
+    r.add_argument("--candidate-deck", default=None,
+                   help="SOT-2402 deck-swap A/B: the champion-under-test plays "
+                        "THIS deck while the opponent field stays pinned to "
+                        "--deck. Absent => champion plays --deck (byte-"
+                        "identical baseline arm). e.g. "
+                        "decks/candidates/14_mega_lucario_ex.csv")
     r.add_argument("--out", default="docs/elo_gauntlet/pool.jsonl")
     r.add_argument("--no-elite", action="store_true",
                    help="omit the SOT-2336 mcts_elite strong cell "
