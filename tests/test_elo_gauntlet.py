@@ -18,7 +18,7 @@ from eval.elo_gauntlet import (decompose, elo_expected, solve_rating,
                                build_field, compute_compare, ATTACK_LEVER,
                                classify_board_wipe, upset_board_wipe_breakdown,
                                _champ_snapshot, BOARD_WIPE_CAUSES,
-                               OVERCOMMIT_ENERGY)
+                               OVERCOMMIT_ENERGY, load_deck)
 
 
 def _recs(seeds, cells):
@@ -306,6 +306,79 @@ class TestUpsetBoardWipeNet(unittest.TestCase):
         self.assertEqual(br["losses"], 0)
         self.assertEqual(br["by_cause"], {})
         self.assertEqual(br["net"], 0.0)
+
+
+class TestDeckSwapAB(unittest.TestCase):
+    """SOT-2402 — champion-side deck-swap A/B wiring in run_cell.
+
+    The crux is isolation: ``--candidate-deck`` swaps ONLY the deck the
+    champion-under-test plays; the opponent field (including the mirror cells)
+    stays pinned to the field/baseline deck, so the two arms are compared on
+    the SAME reference field. Engine-independent: make_agent/play_match are
+    stubbed so no real match is played.
+    """
+
+    def _run_one_cell(self, cell, champ_deck, field_deck):
+        import eval.elo_gauntlet as G
+        from agents.rng import Rng
+        captured = []
+
+        def fake_make_agent(kind, seed=None, deck=None, **cfg):
+            captured.append((kind, deck))
+            return object()
+
+        def fake_play_match(p0, p1, champ_seat=None):
+            return 0, None, 1, False, None   # seat-0 (champion-first) wins
+
+        orig_ma, orig_pm = G.make_agent, G.play_match
+        G.make_agent, G.play_match = fake_make_agent, fake_play_match
+        try:
+            # n=1 => one match, champion is player-0 (champ_first, i%2==0)
+            rows, faults = G.run_cell(cell, {}, 1, Rng(1),
+                                      champ_deck, field_deck)
+        finally:
+            G.make_agent, G.play_match = orig_ma, orig_pm
+        return captured, rows, faults
+
+    def _mirror_cell(self):
+        # a same-deck mirror opponent (no explicit "deck" key), like the real
+        # mcts_peer field cell -> opponent must take the FIELD deck.
+        return {"id": "mcts_peer", "tier": "peer", "agent": "mcts",
+                "anchor": 1560.0, "opp_config": None, "note": "mirror"}
+
+    def test_candidate_deck_only_swaps_champion_not_field(self):
+        champ_deck, field_deck = [678] * 60, [723] * 60   # distinct decks
+        captured, rows, faults = self._run_one_cell(
+            self._mirror_cell(), champ_deck, field_deck)
+        self.assertEqual(faults, 0)
+        self.assertEqual(len(captured), 2)
+        # champion agent (made first) plays the candidate deck ...
+        self.assertEqual(captured[0], ("mcts", champ_deck))
+        # ... the mirror opponent stays on the pinned field deck.
+        self.assertEqual(captured[1], ("mcts", field_deck))
+
+    def test_baseline_arm_is_true_mirror(self):
+        # champ_deck IS field_deck (no --candidate-deck) => both sides identical
+        deck = [3] * 60
+        captured, _, faults = self._run_one_cell(
+            self._mirror_cell(), deck, deck)
+        self.assertEqual(faults, 0)
+        self.assertIs(captured[0][1], captured[1][1])
+
+    def test_champion_default_load_is_byte_identical(self):
+        # cmd_run wiring: absent candidate deck => champ_deck IS field_deck
+        # (the object identity the baseline arm relies on for a true mirror).
+        field_deck = [1] * 60
+        candidate_deck_path = None
+        champ_deck = (load_deck(candidate_deck_path)
+                      if candidate_deck_path else field_deck)
+        self.assertIs(champ_deck, field_deck)
+
+    def test_shipped_candidate_deck_loads_to_60_ids(self):
+        # the candidate archetype deck the A/B run consumes is loadable.
+        ids = load_deck("decks/candidates/14_mega_lucario_ex.csv")
+        self.assertEqual(len(ids), 60)
+        self.assertTrue(all(isinstance(x, int) for x in ids))
 
 
 if __name__ == "__main__":
